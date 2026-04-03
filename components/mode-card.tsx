@@ -1,13 +1,16 @@
-import { Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, {
   FadeInUp,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { Colors, FontFamily, FontSize, BorderRadius, Spacing, neonGlow } from '@/constants/theme';
+import {
+  Colors,
+  FontFamily,
+  Spacing,
+} from '@/constants/theme';
 import { triggerHaptic } from '@/lib/haptics';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -15,8 +18,8 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 interface ModeCardProps {
   title: string;
   description: string;
-  color: string;
-  icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+  emoji: string;
+  gradientTo: string;
   onPress: () => void;
   delay?: number;
 }
@@ -24,8 +27,8 @@ interface ModeCardProps {
 export function ModeCard({
   title,
   description,
-  color,
-  icon,
+  emoji,
+  gradientTo,
   onPress,
   delay = 0,
 }: ModeCardProps) {
@@ -53,23 +56,17 @@ export function ModeCard({
         style={[animatedStyle, styles.pressable]}
       >
         <LinearGradient
-          colors={[color + '18', color + '08', 'transparent']}
+          colors={[Colors.surface, Colors.surface, gradientTo]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[
-            styles.card,
-            { borderColor: color + '55' },
-            neonGlow(color, 12),
-          ]}
+          style={styles.card}
         >
-          <MaterialCommunityIcons
-            name={icon}
-            size={44}
-            color={color}
-            style={styles.icon}
-          />
-          <Text style={[styles.title, { color }]}>{title}</Text>
-          <Text style={styles.description}>{description}</Text>
+          <Text style={styles.icon}>{emoji}</Text>
+          <View style={styles.content}>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.description}>{description}</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
         </LinearGradient>
       </AnimatedPressable>
     </Animated.View>
@@ -85,25 +82,36 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1.5,
-    padding: Spacing.xl,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 20,
   },
   icon: {
-    marginBottom: Spacing.sm,
+    fontSize: 40,
+  },
+  content: {
+    flex: 1,
   },
   title: {
     fontFamily: FontFamily.heading,
-    fontSize: FontSize.xxl,
+    fontSize: 24,
+    color: Colors.textPrimary,
     fontWeight: '700',
+    letterSpacing: 2,
     marginBottom: Spacing.xs,
   },
   description: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.sm,
+    fontSize: 13,
     color: Colors.textSecondary,
-    textAlign: 'center',
+  },
+  chevron: {
+    fontFamily: FontFamily.body,
+    fontSize: 20,
+    color: Colors.textMuted,
   },
 });

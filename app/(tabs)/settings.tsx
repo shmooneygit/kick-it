@@ -53,13 +53,14 @@ export default function SettingsScreen() {
         data={[1]}
         keyExtractor={() => 'settings'}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
         renderItem={() => (
           <View>
             {/* Sound & Vibration */}
             <Text style={styles.sectionLabel}>{t('settingsScreen.soundVibration')}</Text>
             <View style={styles.card}>
               {/* Sound scheme */}
-              <View style={styles.row}>
+              <View style={[styles.row, styles.rowDivider]}>
                 <Text style={styles.label}>🔔 {t('settingsScreen.soundScheme')}</Text>
                 <View style={styles.pillRow}>
                   {SOUND_SCHEMES.map(({ key, labelKey }) => {
@@ -80,13 +81,13 @@ export default function SettingsScreen() {
               </View>
 
               {/* Announce */}
-              <View style={styles.toggleRow}>
+              <View style={[styles.toggleRow, styles.rowDivider]}>
                 <Text style={styles.label}>🔊 {t('settings.announceRounds')}</Text>
                 <Switch
                   value={settings.announceRounds}
                   onValueChange={(v) => update({ announceRounds: v })}
-                  trackColor={{ false: Colors.surface, true: Colors.neonCyan + '55' }}
-                  thumbColor={settings.announceRounds ? Colors.neonCyan : Colors.textMuted}
+                  trackColor={{ false: Colors.surfaceLight, true: Colors.neonCyan }}
+                  thumbColor={settings.announceRounds ? Colors.textPrimary : Colors.textMuted}
                 />
               </View>
 
@@ -96,8 +97,8 @@ export default function SettingsScreen() {
                 <Switch
                   value={settings.vibrationEnabled}
                   onValueChange={(v) => update({ vibrationEnabled: v })}
-                  trackColor={{ false: Colors.surface, true: Colors.neonCyan + '55' }}
-                  thumbColor={settings.vibrationEnabled ? Colors.neonCyan : Colors.textMuted}
+                  trackColor={{ false: Colors.surfaceLight, true: Colors.neonCyan }}
+                  thumbColor={settings.vibrationEnabled ? Colors.textPrimary : Colors.textMuted}
                 />
               </View>
             </View>
@@ -149,17 +150,16 @@ export default function SettingsScreen() {
                   const locale = i18n.locale === 'uk' ? 'uk' : 'en';
                   const name = preset.name[locale] || preset.name.en;
                   return (
-                    <Pressable
+                    <View
                       key={preset.id}
                       style={styles.presetItem}
-                      onLongPress={() => handleDeletePreset(preset.id, name)}
                     >
                       <Text style={styles.presetIcon}>{preset.icon}</Text>
                       <Text style={styles.presetName}>{name}</Text>
-                      <Text style={styles.presetMode}>
-                        {preset.id.includes('boxing') ? '🥊' : '⏱️'}
-                      </Text>
-                    </Pressable>
+                      <Pressable onPress={() => handleDeletePreset(preset.id, name)}>
+                        <Text style={styles.deleteText}>{t('settings.delete')}</Text>
+                      </Pressable>
+                    </View>
                   );
                 })}
               </View>
@@ -168,8 +168,14 @@ export default function SettingsScreen() {
             {/* About */}
             <Text style={styles.sectionLabel}>{t('settingsScreen.about')}</Text>
             <View style={styles.card}>
-              <Text style={styles.aboutText}>Fight Timer v1.0</Text>
-              <Text style={styles.aboutSub}>{t('settingsScreen.contactDev')}</Text>
+              <View style={[styles.toggleRow, styles.rowDivider]}>
+                <Text style={styles.label}>{t('settingsScreen.version')}</Text>
+                <Text style={styles.aboutValue}>Fight Timer v1.0</Text>
+              </View>
+              <View style={styles.toggleRow}>
+                <Text style={styles.label}>{t('settingsScreen.contactDev')}</Text>
+                <Text style={styles.contactLink}>›</Text>
+              </View>
             </View>
           </View>
         )}
@@ -184,61 +190,74 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     paddingHorizontal: Spacing.md,
   },
+  contentContainer: {
+    paddingBottom: 24,
+  },
   title: {
     fontFamily: FontFamily.heading,
-    fontSize: FontSize.xl,
+    fontSize: 18,
     color: Colors.textPrimary,
     fontWeight: '700',
     letterSpacing: 1,
-    marginBottom: Spacing.md,
+    marginBottom: 20,
+    textAlign: 'center',
   },
   sectionLabel: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.md,
+    fontFamily: FontFamily.body,
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginBottom: 8,
+    marginTop: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   card: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
-    padding: Spacing.md,
+    overflow: 'hidden',
   },
   row: {
-    marginBottom: Spacing.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   label: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
+  rowDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceLight,
   },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.xs,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   pillRow: {
     flexDirection: 'row',
     gap: Spacing.xs,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
   },
   pill: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs + 2,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: BorderRadius.pill,
     borderWidth: 1,
     borderColor: Colors.border,
+    backgroundColor: Colors.surfaceLight,
   },
   pillActive: {
     borderColor: Colors.neonCyan,
-    backgroundColor: Colors.neonCyan + '18',
   },
   pillText: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.xs,
+    fontFamily: FontFamily.body,
+    fontSize: 12,
     color: Colors.textMuted,
   },
   pillTextActive: {
@@ -246,30 +265,29 @@ const styles = StyleSheet.create({
   },
   langPill: {
     flex: 1,
-    paddingVertical: Spacing.sm,
+    paddingVertical: 10,
     borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceLight,
     alignItems: 'center',
   },
   langPillActive: {
-    borderColor: Colors.neonCyan,
-    backgroundColor: Colors.neonCyan + '18',
+    backgroundColor: Colors.neonCyan,
   },
   langText: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.sm,
+    fontSize: 14,
     color: Colors.textMuted,
   },
   langTextActive: {
-    color: Colors.neonCyan,
+    color: Colors.background,
   },
   presetItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 0.5,
-    borderBottomColor: Colors.surfaceBorder,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceLight,
   },
   presetIcon: {
     fontSize: 18,
@@ -281,8 +299,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.textPrimary,
   },
-  presetMode: {
+  deleteText: {
+    fontFamily: FontFamily.body,
     fontSize: 14,
+    color: Colors.pink,
   },
   emptyText: {
     fontFamily: FontFamily.body,
@@ -290,15 +310,14 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginBottom: Spacing.md,
   },
-  aboutText: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.md,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.xs,
-  },
-  aboutSub: {
+  aboutValue: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.xs,
+    fontSize: 14,
     color: Colors.textMuted,
+  },
+  contactLink: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 16,
+    color: Colors.neonCyan,
   },
 });

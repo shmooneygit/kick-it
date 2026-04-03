@@ -14,7 +14,6 @@ import {
   Colors,
   FontFamily,
   FontSize,
-  Spacing,
   getPhaseColor,
   neonGlow,
 } from '@/constants/theme';
@@ -40,9 +39,7 @@ function getPhaseLabel(phase: TimerPhase, mode: TimerMode, round: number): strin
     case 'countdown':
       return t('timer.preparation');
     case 'work':
-      return mode === 'boxing'
-        ? `${t('timer.round')} ${round}`
-        : `${t('timer.work')} ${round}`;
+      return mode === 'boxing' ? t('timer.round') : t('timer.work');
     case 'rest':
       return t('timer.rest');
     case 'finished':
@@ -69,9 +66,9 @@ export function TimerDisplay({
   useEffect(() => {
     if (phase === 'finished') return;
 
-    const isLast3 = secondsRemaining <= 3 && secondsRemaining > 0;
-    const scaleTarget = isLast3 ? 1.12 : 1.04;
-    const duration = isLast3 ? 150 : 100;
+    const isLast10 = secondsRemaining <= 10 && secondsRemaining > 0;
+    const scaleTarget = isLast10 ? 1.03 : 1;
+    const duration = isLast10 ? 220 : 180;
 
     scale.value = withSequence(
       withTiming(scaleTarget, { duration }),
@@ -104,9 +101,17 @@ export function TimerDisplay({
   }));
 
   const isBoxing = mode === 'boxing';
-  const progressLabel = isBoxing
-    ? `${t('timer.round')} ${currentRound} ${t('timer.roundOf')} ${totalRounds}`
-    : `${t('timer.work')} ${currentRound} ${t('timer.intervalOf')} ${totalRounds}`;
+  let progressLabel: string | null = null;
+
+  if (phase === 'work') {
+    progressLabel = isBoxing
+      ? `${currentRound} ${t('timer.roundOf')} ${totalRounds}`
+      : `${currentRound} ${t('timer.intervalOf')} ${totalRounds}`;
+  } else if (phase === 'rest' && currentRound < totalRounds) {
+    progressLabel = isBoxing
+      ? `${t('timer.round')} ${currentRound + 1}`
+      : `${t('timer.work')} ${currentRound + 1}`;
+  }
 
   return (
     <View style={styles.container}>
@@ -116,7 +121,7 @@ export function TimerDisplay({
       </Text>
 
       {/* Progress info */}
-      {phase !== 'countdown' && phase !== 'finished' && (
+      {progressLabel && (
         <Text style={styles.progress}>{progressLabel}</Text>
       )}
 
@@ -149,27 +154,29 @@ const styles = StyleSheet.create({
   },
   phaseLabel: {
     fontFamily: FontFamily.heading,
-    fontSize: FontSize.xl,
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: 3,
-    marginBottom: Spacing.xs,
+    marginBottom: 8,
+    textTransform: 'uppercase',
   },
   progress: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.md,
+    fontSize: 20,
     color: Colors.textSecondary,
-    marginBottom: Spacing.lg,
+    marginBottom: 40,
   },
   digits: {
     fontFamily: FontFamily.timer,
     fontSize: FontSize.timer,
-    fontWeight: '700',
-    letterSpacing: 4,
+    fontWeight: '400',
+    letterSpacing: 2,
+    fontVariant: ['tabular-nums'],
   },
   elapsed: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.sm,
+    fontSize: 12,
     color: Colors.textMuted,
-    marginTop: Spacing.lg,
+    marginTop: 30,
   },
 });

@@ -22,7 +22,7 @@ export const Colors = {
   countdown: '#FFB800',
   finished: '#00F5FF',
 
-  danger: '#FF3333',
+  danger: '#FF006E',
 
   // Aliases used by components
   neonGreen: '#39FF14',
@@ -45,15 +45,15 @@ export const Spacing = {
 export const Radius = {
   sm: 8,
   md: 12,
-  lg: 16,
-  xl: 24,
-  pill: 999,
+  lg: 14,
+  xl: 16,
+  pill: 20,
 } as const;
 
 export const BorderRadius = Radius;
 
 export const FontFamily = {
-  timer: 'Orbitron_700Bold',
+  timer: 'Orbitron_400Regular',
   heading: 'Orbitron_700Bold',
   body: 'Exo2_400Regular',
   bodySemiBold: 'Exo2_600SemiBold',
@@ -62,11 +62,11 @@ export const FontFamily = {
 
 export const FontSize = {
   xs: 11,
-  sm: 13,
-  md: 15,
-  lg: 18,
-  xl: 22,
-  xxl: 28,
+  sm: 12,
+  md: 14,
+  lg: 16,
+  xl: 18,
+  xxl: 22,
   timer: 96,
 } as const;
 
@@ -84,10 +84,23 @@ export function glow(color: string, radius = 10) {
   return {
     shadowColor: color,
     shadowOffset: { width: 0, height: 0 } as const,
-    shadowOpacity: 0.7,
+    shadowOpacity: 0.25,
     shadowRadius: radius,
     elevation: radius,
   };
+}
+
+export function withOpacity(hex: string, opacity: number) {
+  const value = hex.replace('#', '');
+  const normalized = value.length === 3
+    ? value.split('').map((char) => char + char).join('')
+    : value;
+  const num = Number.parseInt(normalized, 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
 export const neonGlow = glow;

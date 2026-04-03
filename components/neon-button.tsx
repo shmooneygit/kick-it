@@ -1,11 +1,15 @@
 import { Pressable, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { Colors, FontFamily, FontSize, BorderRadius, neonGlow } from '@/constants/theme';
+import {
+  Colors,
+  FontFamily,
+  BorderRadius,
+  neonGlow,
+} from '@/constants/theme';
 import { triggerHaptic } from '@/lib/haptics';
 import * as Haptics from 'expo-haptics';
 
@@ -27,6 +31,7 @@ export function NeonButton({
   fullWidth = false,
 }: NeonButtonProps) {
   const scale = useSharedValue(1);
+  const isPrimaryGreen = color === Colors.green || color === Colors.neonGreen;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -47,32 +52,51 @@ export function NeonButton({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled}
-      style={[animatedStyle, disabled && { opacity: 0.5 }, fullWidth && { width: '100%' }]}
+      style={[
+        animatedStyle,
+        styles.button,
+        { backgroundColor: color },
+        isPrimaryGreen && neonGlow(color, 24),
+        disabled && styles.disabled,
+        fullWidth && styles.fullWidth,
+      ]}
     >
-      <LinearGradient
-        colors={[color, color + '88']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.gradient, neonGlow(color, 15)]}
+      <Text
+        style={[
+          styles.text,
+          isPrimaryGreen ? styles.textPrimaryAction : styles.textSecondaryAction,
+        ]}
       >
-        <Text style={styles.text}>{title}</Text>
-      </LinearGradient>
+        {title}
+      </Text>
     </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
-  gradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: BorderRadius.md,
+  button: {
+    minHeight: 56,
+    paddingHorizontal: 24,
+    borderRadius: BorderRadius.lg,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullWidth: {
+    width: '100%',
+  },
+  disabled: {
+    opacity: 0.5,
   },
   text: {
     fontFamily: FontFamily.heading,
-    fontSize: FontSize.xl,
-    color: Colors.textPrimary,
+    fontSize: 20,
     fontWeight: '700',
-    letterSpacing: 2,
+    letterSpacing: 3,
+  },
+  textPrimaryAction: {
+    color: Colors.background,
+  },
+  textSecondaryAction: {
+    color: Colors.textPrimary,
   },
 });

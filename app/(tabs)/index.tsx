@@ -7,9 +7,8 @@ import { useHistoryStore } from '@/store/history-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { ModeCard } from '@/components/mode-card';
 import { WorkoutRecord } from '@/lib/types';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
+import { Colors, FontFamily, Spacing } from '@/constants/theme';
 import { t } from '@/lib/i18n';
-import { parseISO, format } from 'date-fns';
 
 function getTimeGreeting(): string {
   const h = new Date().getHours();
@@ -22,6 +21,10 @@ function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function formatConfigShorthand(record: WorkoutRecord): string {
+  return `${record.config.rounds}×${formatTime(record.config.workDuration)}`;
 }
 
 export default function HomeScreen() {
@@ -60,7 +63,6 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>{getTimeGreeting()}</Text>
-          <Text style={styles.title}>{t('home.title')}</Text>
         </View>
         {stats.currentStreak > 0 && (
           <View style={styles.streakBadge}>
@@ -74,41 +76,44 @@ export default function HomeScreen() {
         <ModeCard
           title={t('home.boxing')}
           description={t('home.boxingDescription')}
-          color={Colors.neonGreen}
-          icon="boxing-glove"
+          emoji="🥊"
+          gradientTo="#2A1015"
           onPress={handleBoxing}
           delay={100}
         />
         <ModeCard
           title={t('home.tabata')}
           description={t('home.tabataDescription')}
-          color={Colors.neonCyan}
-          icon="timer-outline"
+          emoji="⏱️"
+          gradientTo="#0A1520"
           onPress={handleTabata}
           delay={250}
         />
       </View>
 
       {/* Recent workouts */}
-      {recentWorkouts.length > 0 && (
-        <View style={styles.recentSection}>
-          <Text style={styles.recentLabel}>{t('home.recent')}</Text>
-          {recentWorkouts.map((w) => (
+      <View style={styles.recentSection}>
+        <Text style={styles.recentLabel}>{t('home.recent')}</Text>
+        {recentWorkouts.length > 0 ? (
+          recentWorkouts.map((w) => (
             <Pressable key={w.id} style={styles.recentCard} onPress={() => handleRepeat(w)}>
               <Text style={styles.recentIcon}>{w.mode === 'boxing' ? '🥊' : '⏱️'}</Text>
               <View style={styles.recentInfo}>
                 <Text style={styles.recentTitle}>
-                  {w.completedRounds} {t('stats.rounds')} · {formatTime(w.totalDuration)}
+                  {w.mode === 'boxing' ? t('home.boxing') : t('home.tabata')}
                 </Text>
-                <Text style={styles.recentDate}>
-                  {format(parseISO(w.date), 'dd.MM HH:mm')}
-                </Text>
+                <Text style={styles.recentMeta}>{formatConfigShorthand(w)}</Text>
               </View>
-              <Text style={styles.repeatBtn}>{t('home.repeat')}</Text>
+              <Text style={styles.recentDuration}>{formatTime(w.totalDuration)}</Text>
+              <View style={styles.repeatPill}>
+                <Text style={styles.repeatBtn}>▶</Text>
+              </View>
             </Pressable>
-          ))}
-        </View>
-      )}
+          ))
+        ) : (
+          <Text style={styles.emptyRecent}>{t('home.recentEmpty')}</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -123,75 +128,87 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingVertical: Spacing.sm,
+    marginBottom: 16,
   },
   greeting: {
-    fontFamily: FontFamily.body,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-  },
-  title: {
-    fontFamily: FontFamily.heading,
-    fontSize: FontSize.xxl,
-    color: Colors.neonCyan,
-    fontWeight: '700',
-    letterSpacing: 2,
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 16,
+    color: Colors.textPrimary,
   },
   streakBadge: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.pill,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 20,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
-    borderWidth: 1,
-    borderColor: Colors.neonAmber + '55',
   },
   streakText: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.md,
+    fontSize: 14,
     color: Colors.neonAmber,
   },
   cards: {
-    flex: 1,
-    gap: Spacing.md,
+    flexGrow: 1,
+    gap: 12,
   },
   recentSection: {
-    paddingVertical: Spacing.sm,
-    paddingBottom: Spacing.xs,
+    paddingTop: 16,
+    paddingBottom: 6,
   },
   recentLabel: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
+    fontFamily: FontFamily.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   recentCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.sm,
-    padding: Spacing.sm,
-    marginBottom: Spacing.xs,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 6,
+    gap: 10,
   },
   recentIcon: {
-    fontSize: 18,
-    marginRight: Spacing.sm,
+    fontSize: 16,
   },
   recentInfo: {
     flex: 1,
   },
   recentTitle: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.xs,
+    fontSize: 13,
     color: Colors.textPrimary,
   },
-  recentDate: {
+  recentMeta: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.xs - 1,
+    fontSize: 12,
     color: Colors.textMuted,
+  },
+  recentDuration: {
+    fontFamily: FontFamily.body,
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  repeatPill: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   repeatBtn: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.xs,
+    fontSize: 12,
     color: Colors.neonCyan,
+  },
+  emptyRecent: {
+    fontFamily: FontFamily.body,
+    fontSize: 13,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: 12,
   },
 });

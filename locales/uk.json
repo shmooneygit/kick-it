@@ -11,7 +11,8 @@
     "tabataTimer": "Табата таймер",
     "tabataDescription": "Інтервали високої інтенсивності",
     "recent": "Останні",
-    "repeat": "Повторити"
+    "repeat": "Повторити",
+    "recentEmpty": "Твої тренування з'являться тут"
   },
   "tabs": {
     "timer": "Таймер",
@@ -70,6 +71,7 @@
   },
   "result": {
     "title": "ТРЕНУВАННЯ ЗАВЕРШЕНО",
+    "stoppedTitle": "ТРЕНУВАННЯ ЗУПИНЕНО",
     "roundsCompleted": "раундів",
     "intervalsCompleted": "інтервалів",
     "totalTime": "Загальний час",
@@ -95,6 +97,7 @@
   "achievements": {
     "title": "ДОСЯГНЕННЯ",
     "level": "Рівень",
+    "next": "Наступний",
     "rounds": "раундів",
     "currentStreak": "Поточна серія",
     "bestStreak": "Найкраща серія",
@@ -113,6 +116,7 @@
     "language": "Мова",
     "myPrograms": "Мої програми",
     "about": "Про додаток",
+    "version": "Версія",
     "contactDev": "Написати розробнику"
   }
 }

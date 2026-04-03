@@ -1,12 +1,10 @@
 import { View, Pressable, Text, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withSequence,
   withTiming,
-  withSpring,
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
 import { useSettingsStore } from '@/store/settings-store';
@@ -35,7 +33,6 @@ export function ControlButtons({
   useSettingsStore((s) => s.settings.language);
 
   const pauseGlow = useSharedValue(0.4);
-  const scale = useSharedValue(1);
 
   useEffect(() => {
     if (isPaused) {
@@ -57,7 +54,6 @@ export function ControlButtons({
   }));
 
   const handlePausePress = () => {
-    scale.value = withSpring(1, undefined, () => {});
     triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
     onPauseResume();
   };
@@ -77,11 +73,7 @@ export function ControlButtons({
             onHome();
           }}
         >
-          <MaterialCommunityIcons
-            name="home"
-            size={24}
-            color={Colors.neonCyan}
-          />
+          <Text style={styles.homeEmoji}>🏠</Text>
           <Text style={styles.homeText}>{t('timer.backHome')}</Text>
         </Pressable>
       </View>
@@ -95,11 +87,7 @@ export function ControlButtons({
         style={[styles.stopButton, neonGlow(Colors.danger, 8)]}
         onPress={handleStopPress}
       >
-        <MaterialCommunityIcons
-          name="stop"
-          size={28}
-          color={Colors.danger}
-        />
+        <View style={styles.stopGlyph} />
       </Pressable>
 
       {/* Pause / Resume button */}
@@ -111,11 +99,14 @@ export function ControlButtons({
         ]}
         onPress={handlePausePress}
       >
-        <MaterialCommunityIcons
-          name={isPaused ? 'play' : 'pause'}
-          size={40}
-          color={Colors.neonCyan}
-        />
+        {isPaused ? (
+          <View style={styles.playGlyph} />
+        ) : (
+          <View style={styles.pauseGlyph}>
+            <View style={styles.pauseBar} />
+            <View style={styles.pauseBar} />
+          </View>
+        )}
       </AnimatedPressable>
 
       {/* Spacer for symmetry */}
@@ -146,11 +137,17 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    borderWidth: 1.5,
-    borderColor: Colors.danger + '88',
-    backgroundColor: Colors.surface,
+    borderWidth: 2,
+    borderColor: Colors.pink,
+    backgroundColor: Colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  stopGlyph: {
+    width: 20,
+    height: 20,
+    borderRadius: 3,
+    backgroundColor: Colors.pink,
   },
   spacer: {
     width: 60,
@@ -166,9 +163,34 @@ const styles = StyleSheet.create({
     borderColor: Colors.neonCyan,
     backgroundColor: Colors.surface,
   },
+  homeEmoji: {
+    fontSize: 20,
+  },
   homeText: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.lg,
+    fontSize: FontSize.md,
     color: Colors.neonCyan,
+  },
+  pauseGlyph: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pauseBar: {
+    width: 6,
+    height: 24,
+    borderRadius: 4,
+    backgroundColor: Colors.neonCyan,
+  },
+  playGlyph: {
+    width: 0,
+    height: 0,
+    marginLeft: 6,
+    borderTopWidth: 14,
+    borderBottomWidth: 14,
+    borderLeftWidth: 22,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderLeftColor: Colors.neonCyan,
   },
 });

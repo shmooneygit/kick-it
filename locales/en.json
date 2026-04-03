@@ -11,7 +11,8 @@
     "tabataTimer": "Tabata Timer",
     "tabataDescription": "High intensity intervals",
     "recent": "Recent",
-    "repeat": "Repeat"
+    "repeat": "Repeat",
+    "recentEmpty": "Your workouts will appear here"
   },
   "tabs": {
     "timer": "Timer",
@@ -70,6 +71,7 @@
   },
   "result": {
     "title": "WORKOUT COMPLETE",
+    "stoppedTitle": "WORKOUT STOPPED",
     "roundsCompleted": "rounds",
     "intervalsCompleted": "intervals",
     "totalTime": "Total time",
@@ -95,6 +97,7 @@
   "achievements": {
     "title": "ACHIEVEMENTS",
     "level": "Level",
+    "next": "Next",
     "rounds": "rounds",
     "currentStreak": "Current streak",
     "bestStreak": "Best streak",
@@ -113,6 +116,7 @@
     "language": "Language",
     "myPrograms": "My Programs",
     "about": "About",
+    "version": "Version",
     "contactDev": "Contact developer"
   }
 }

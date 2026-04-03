@@ -82,7 +82,7 @@ export function NumberStepper({
   }, []);
 
   const displayValue = formatValue ? formatValue(value) : String(value);
-  const btnSize = compact ? 40 : 48;
+  const btnSize = compact ? 32 : 40;
 
   return (
     <View style={compact ? styles.containerCompact : styles.container}>
@@ -134,28 +134,32 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   label: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
+    fontFamily: FontFamily.body,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   labelCompact: {
     fontFamily: FontFamily.body,
     fontSize: FontSize.xs,
     color: Colors.textMuted,
-    marginBottom: 2,
+    marginBottom: 8,
     textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
+    gap: 10,
   },
   button: {
-    borderWidth: 1.5,
-    borderColor: Colors.neonCyan + '66',
-    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -163,26 +167,26 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   buttonText: {
-    fontFamily: FontFamily.heading,
-    fontSize: FontSize.lg,
-    color: Colors.neonCyan,
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 18,
+    color: Colors.textPrimary,
   },
   valueContainer: {
     minWidth: 80,
     alignItems: 'center',
   },
   valueContainerCompact: {
-    minWidth: 60,
+    minWidth: 68,
     alignItems: 'center',
   },
   value: {
-    fontFamily: FontFamily.timer,
-    fontSize: FontSize.xl + 4,
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 22,
     color: Colors.textPrimary,
   },
   valueCompact: {
-    fontFamily: FontFamily.timer,
-    fontSize: FontSize.lg,
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 22,
     color: Colors.textPrimary,
   },
 });

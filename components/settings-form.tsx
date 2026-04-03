@@ -24,7 +24,7 @@ import {
   FontSize,
   BorderRadius,
   Spacing,
-  neonGlow,
+  withOpacity,
 } from '@/constants/theme';
 import { NumberStepper } from './number-stepper';
 import { DurationStepper } from './duration-stepper';
@@ -39,8 +39,6 @@ const SOUND_SCHEMES: { key: SoundScheme; labelKey: string }[] = [
   { key: 'beep', labelKey: 'settings.beep' },
   { key: 'whistle', labelKey: 'settings.whistle' },
 ];
-
-const DURATION_OPTIONS = [5, 10, 15, 20, 25, 30, 45, 60];
 
 function formatTotalTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -153,8 +151,8 @@ export function SettingsForm({ mode }: SettingsFormProps) {
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <MaterialCommunityIcons
             name="chevron-left"
-            size={28}
-            color={Colors.textPrimary}
+            size={18}
+            color={Colors.neonCyan}
           />
         </Pressable>
         <Text style={styles.headerTitle}>
@@ -233,32 +231,19 @@ export function SettingsForm({ mode }: SettingsFormProps) {
         {/* Duration override (shown after loading a preset) */}
         {showDuration && targetMinutes !== null && (
           <View style={styles.durationRow}>
-            <Text style={styles.durationLabel}>{t('settings.workoutDuration')}:</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.durationOptions}
-            >
-              {DURATION_OPTIONS.map((min) => {
-                const active = targetMinutes === min;
-                return (
-                  <Pressable
-                    key={min}
-                    style={[styles.durationChip, active && styles.durationChipActive]}
-                    onPress={() => handleDurationChange(min)}
-                  >
-                    <Text
-                      style={[
-                        styles.durationChipText,
-                        active && styles.durationChipTextActive,
-                      ]}
-                    >
-                      {min} {t('settings.minutesShort')}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            <Text style={styles.durationLabel}>{t('settings.workoutDuration')}</Text>
+            <View style={styles.durationStepper}>
+              <NumberStepper
+                label=""
+                value={targetMinutes}
+                min={5}
+                max={60}
+                step={5}
+                onChange={handleDurationChange}
+                formatValue={(value) => `${value}${t('settings.minutesShort')}`}
+                compact
+              />
+            </View>
           </View>
         )}
 
@@ -326,44 +311,48 @@ export function SettingsForm({ mode }: SettingsFormProps) {
 
         {/* Toggles row: announce + sound scheme */}
         <View style={styles.togglesRow}>
-          <View style={styles.toggleItem}>
-            <Text style={styles.toggleLabel}>🔊 {t('settings.announceRounds')}</Text>
-            <Switch
-              value={config.announceRounds}
-              onValueChange={(v) => {
-                setConfig({ announceRounds: v });
-                setActivePresetId(null);
-              }}
-              trackColor={{ false: Colors.surface, true: Colors.neonCyan + '55' }}
-              thumbColor={config.announceRounds ? Colors.neonCyan : Colors.textMuted}
-              style={styles.switchSmall}
-            />
+          <View style={styles.toggleCard}>
+            <View style={styles.toggleHeader}>
+              <Text style={styles.toggleLabel}>🔊 {t('settings.announceRounds')}</Text>
+              <Switch
+                value={config.announceRounds}
+                onValueChange={(v) => {
+                  setConfig({ announceRounds: v });
+                  setActivePresetId(null);
+                }}
+                trackColor={{ false: Colors.surfaceLight, true: Colors.neonCyan }}
+                thumbColor={config.announceRounds ? Colors.textPrimary : Colors.textMuted}
+                style={styles.switchSmall}
+              />
+            </View>
           </View>
-          <View style={styles.soundRow}>
-            <Text style={styles.toggleLabel}>🔔</Text>
-            {SOUND_SCHEMES.map(({ key, labelKey }) => {
-              const selected = config.soundScheme === key;
-              return (
-                <Pressable
-                  key={key}
-                  style={[styles.soundPill, selected && styles.soundPillSelected]}
-                  onPress={() => {
-                    setConfig({ soundScheme: key });
-                    setActivePresetId(null);
-                    triggerHaptic();
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.soundPillText,
-                      selected && styles.soundPillTextSelected,
-                    ]}
+          <View style={styles.soundCard}>
+            <Text style={styles.toggleLabel}>🔔 {t('settings.soundScheme')}</Text>
+            <View style={styles.soundRow}>
+              {SOUND_SCHEMES.map(({ key, labelKey }) => {
+                const selected = config.soundScheme === key;
+                return (
+                  <Pressable
+                    key={key}
+                    style={[styles.soundPill, selected && styles.soundPillSelected]}
+                    onPress={() => {
+                      setConfig({ soundScheme: key });
+                      setActivePresetId(null);
+                      triggerHaptic();
+                    }}
                   >
-                    {t(labelKey)}
-                  </Text>
-                </Pressable>
-              );
-            })}
+                    <Text
+                      style={[
+                        styles.soundPillText,
+                        selected && styles.soundPillTextSelected,
+                      ]}
+                    >
+                      {t(labelKey)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
         </View>
 
@@ -400,46 +389,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    height: 44,
   },
   headerTitle: {
     fontFamily: FontFamily.heading,
-    fontSize: FontSize.md,
+    fontSize: 18,
     color: Colors.textPrimary,
     fontWeight: '700',
     letterSpacing: 1,
+    textAlign: 'center',
   },
   content: {
     flex: 1,
     paddingHorizontal: Spacing.md,
-    justifyContent: 'space-evenly',
+    justifyContent: 'space-between',
+    paddingBottom: 8,
   },
   // Preset chips
   presetRow: {
-    gap: Spacing.sm,
-    paddingVertical: Spacing.xs,
+    gap: 8,
+    paddingBottom: 14,
   },
   presetChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: BorderRadius.pill,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.surfaceLight,
   },
   presetChipActive: {
     borderColor: Colors.neonCyan,
-    backgroundColor: Colors.neonCyan + '18',
   },
   presetIcon: {
     fontSize: 14,
   },
   presetChipText: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.xs,
+    fontFamily: FontFamily.body,
+    fontSize: 13,
     color: Colors.textSecondary,
   },
   presetChipTextActive: {
@@ -448,12 +438,12 @@ const styles = StyleSheet.create({
   presetChipSave: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: BorderRadius.pill,
     borderWidth: 1,
-    borderColor: Colors.neonCyan + '44',
-    borderStyle: 'dashed',
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceLight,
   },
   // Save input
   saveRow: {
@@ -463,7 +453,7 @@ const styles = StyleSheet.create({
   },
   saveInput: {
     flex: 1,
-    height: 36,
+    height: 38,
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
@@ -474,76 +464,84 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   saveBtn: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     borderRadius: BorderRadius.sm,
-    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   // Duration override
   durationRow: {
+    backgroundColor: Colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  durationLabel: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.xs,
-    color: Colors.textSecondary,
-  },
-  durationOptions: {
-    gap: Spacing.xs,
-  },
-  durationChip: {
-    paddingHorizontal: Spacing.sm + 2,
-    paddingVertical: Spacing.xs + 1,
-    borderRadius: BorderRadius.pill,
+    justifyContent: 'space-between',
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 14,
   },
-  durationChipActive: {
-    borderColor: Colors.neonAmber,
-    backgroundColor: Colors.neonAmber + '18',
-  },
-  durationChipText: {
+  durationLabel: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    fontSize: 13,
+    color: Colors.textSecondary,
   },
-  durationChipTextActive: {
-    color: Colors.neonAmber,
+  durationStepper: {
+    marginRight: -6,
   },
   // Settings grid
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.md,
+    gap: 10,
+    marginBottom: 14,
   },
   gridCell: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: Colors.surfaceGlass,
+    backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: Spacing.sm,
+    padding: 10,
   },
   // Toggles
   togglesRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.md,
+    gap: 10,
+    marginBottom: 14,
   },
-  toggleItem: {
+  toggleCard: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  soundCard: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  toggleHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    justifyContent: 'space-between',
   },
   toggleLabel: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.sm,
+    fontSize: 12,
     color: Colors.textSecondary,
   },
   switchSmall: {
@@ -551,23 +549,25 @@ const styles = StyleSheet.create({
   },
   soundRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
   },
   soundPill: {
-    paddingHorizontal: Spacing.sm + 2,
-    paddingVertical: Spacing.xs + 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: BorderRadius.pill,
     borderWidth: 1,
     borderColor: Colors.border,
+    backgroundColor: Colors.surfaceLight,
   },
   soundPillSelected: {
     borderColor: Colors.neonCyan,
-    backgroundColor: Colors.neonCyan + '22',
+    backgroundColor: withOpacity(Colors.neonCyan, 0.1),
   },
   soundPillText: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.xs,
+    fontFamily: FontFamily.body,
+    fontSize: 12,
     color: Colors.textMuted,
   },
   soundPillTextSelected: {
@@ -578,28 +578,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.xs,
+    gap: 4,
+    marginBottom: 14,
   },
   totalLabel: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
+    fontFamily: FontFamily.body,
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   totalValue: {
-    fontFamily: FontFamily.timer,
-    fontSize: FontSize.xl,
-    color: Colors.neonAmber,
-    ...neonGlow(Colors.neonAmber, 8),
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 13,
+    color: Colors.textPrimary,
   },
   totalDetail: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.xs,
+    fontSize: 13,
     color: Colors.textMuted,
   },
   // Start button
   startContainer: {
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
   },
 });

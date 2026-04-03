@@ -211,11 +211,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+    paddingHorizontal: 20,
   },
   progressTrack: {
     height: 4,
-    backgroundColor: Colors.surfaceBorder,
+    backgroundColor: Colors.surfaceLight,
     width: '100%',
+    borderRadius: 2,
+    marginBottom: 30,
   },
   progressFill: {
     height: '100%',
