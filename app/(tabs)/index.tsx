@@ -1,98 +1,197 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useCallback } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter, Href } from 'expo-router';
+import { useWorkoutStore } from '@/store/workout-store';
+import { useHistoryStore } from '@/store/history-store';
+import { useSettingsStore } from '@/store/settings-store';
+import { ModeCard } from '@/components/mode-card';
+import { WorkoutRecord } from '@/lib/types';
+import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
+import { t } from '@/lib/i18n';
+import { parseISO, format } from 'date-fns';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+function getTimeGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return t('greetingMorning');
+  if (h < 18) return t('greetingAfternoon');
+  return t('greetingEvening');
+}
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  useSettingsStore((s) => s.settings.language);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const resetConfig = useWorkoutStore((s) => s.resetConfig);
+  const loadConfig = useWorkoutStore((s) => s.loadConfig);
+  const history = useHistoryStore((s) => s.history);
+  const stats = useHistoryStore((s) => s.stats);
+
+  const recentWorkouts = history.slice(0, 3);
+
+  const handleBoxing = () => {
+    resetConfig('boxing');
+    router.push('/boxing/config' as Href);
+  };
+
+  const handleTabata = () => {
+    resetConfig('tabata');
+    router.push('/tabata/config' as Href);
+  };
+
+  const handleRepeat = useCallback(
+    (record: WorkoutRecord) => {
+      loadConfig(record.config, record.presetId ?? null);
+      router.push('/timer' as Href);
+    },
+    [loadConfig, router],
+  );
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+      {/* Header with streak */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>{getTimeGreeting()}</Text>
+          <Text style={styles.title}>{t('home.title')}</Text>
+        </View>
+        {stats.currentStreak > 0 && (
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakText}>🔥 {stats.currentStreak}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Mode cards */}
+      <View style={styles.cards}>
+        <ModeCard
+          title={t('home.boxing')}
+          description={t('home.boxingDescription')}
+          color={Colors.neonGreen}
+          icon="boxing-glove"
+          onPress={handleBoxing}
+          delay={100}
+        />
+        <ModeCard
+          title={t('home.tabata')}
+          description={t('home.tabataDescription')}
+          color={Colors.neonCyan}
+          icon="timer-outline"
+          onPress={handleTabata}
+          delay={250}
+        />
+      </View>
+
+      {/* Recent workouts */}
+      {recentWorkouts.length > 0 && (
+        <View style={styles.recentSection}>
+          <Text style={styles.recentLabel}>{t('home.recent')}</Text>
+          {recentWorkouts.map((w) => (
+            <Pressable key={w.id} style={styles.recentCard} onPress={() => handleRepeat(w)}>
+              <Text style={styles.recentIcon}>{w.mode === 'boxing' ? '🥊' : '⏱️'}</Text>
+              <View style={styles.recentInfo}>
+                <Text style={styles.recentTitle}>
+                  {w.completedRounds} {t('stats.rounds')} · {formatTime(w.totalDuration)}
+                </Text>
+                <Text style={styles.recentDate}>
+                  {format(parseISO(w.date), 'dd.MM HH:mm')}
+                </Text>
+              </View>
+              <Text style={styles.repeatBtn}>{t('home.repeat')}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    paddingHorizontal: Spacing.md,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: Spacing.sm,
+  },
+  greeting: {
+    fontFamily: FontFamily.body,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  title: {
+    fontFamily: FontFamily.heading,
+    fontSize: FontSize.xxl,
+    color: Colors.neonCyan,
+    fontWeight: '700',
+    letterSpacing: 2,
+  },
+  streakBadge: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.pill,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.neonAmber + '55',
+  },
+  streakText: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: FontSize.md,
+    color: Colors.neonAmber,
+  },
+  cards: {
+    flex: 1,
+    gap: Spacing.md,
+  },
+  recentSection: {
+    paddingVertical: Spacing.sm,
+    paddingBottom: Spacing.xs,
+  },
+  recentLabel: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xs,
+  },
+  recentCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  recentIcon: {
+    fontSize: 18,
+    marginRight: Spacing.sm,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  recentInfo: {
+    flex: 1,
+  },
+  recentTitle: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: FontSize.xs,
+    color: Colors.textPrimary,
+  },
+  recentDate: {
+    fontFamily: FontFamily.body,
+    fontSize: FontSize.xs - 1,
+    color: Colors.textMuted,
+  },
+  repeatBtn: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: FontSize.xs,
+    color: Colors.neonCyan,
   },
 });
