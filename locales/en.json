@@ -104,6 +104,7 @@
     "title": "ACHIEVEMENTS",
     "level": "Level",
     "next": "Next",
+    "maxLevel": "MAX",
     "rounds": "rounds",
     "currentStreak": "Current streak",
     "bestStreak": "Best streak",
@@ -120,9 +121,12 @@
     "timerSection": "Timer",
     "defaultCountdown": "Default countdown",
     "language": "Language",
+    "languageUkrainian": "Ukrainian",
+    "languageEnglish": "English",
     "myPrograms": "My Programs",
     "about": "About",
     "version": "Version",
+    "versionValue": "Fight Timer v%{version}",
     "contactDev": "Contact developer"
   }
 }

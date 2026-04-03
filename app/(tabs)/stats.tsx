@@ -169,7 +169,7 @@ export default function StatsScreen() {
 
       {/* Recent workouts */}
       <Text style={styles.sectionLabel}>{t('stats.recent')}</Text>
-      {history.length === 0 ? (
+      {filtered.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>{t('stats.empty')}</Text>
         </View>

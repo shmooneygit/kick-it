@@ -30,6 +30,7 @@ export default function ResultScreen() {
   const params = useLocalSearchParams<{ recordId?: string; newBadgeIds?: string }>();
   const insets = useSafeAreaInsets();
   const config = useWorkoutStore((s) => s.config);
+  const loadConfig = useWorkoutStore((s) => s.loadConfig);
   const timerState = useWorkoutStore((s) => s.timerState);
   const lastResult = useWorkoutStore((s) => s.lastResult);
   const clearLastResult = useWorkoutStore((s) => s.clearLastResult);
@@ -52,9 +53,16 @@ export default function ResultScreen() {
     }
   }, [getBadgesByIds, newBadgeIdsParam]);
 
-  const sessionResult =
-    lastResult ??
-    createSessionResult(timerState, config.mode, timerState.phase === 'finished');
+  const sessionResult = lastResult ?? (
+    workoutRecord
+      ? {
+          mode: workoutRecord.mode,
+          completedRounds: workoutRecord.completedRounds,
+          totalDuration: workoutRecord.totalDuration,
+          wasCompleted: workoutRecord.wasCompleted,
+        }
+      : createSessionResult(timerState, config.mode, timerState.phase === 'finished')
+  );
 
   const isBoxing = sessionResult.mode === 'boxing';
   const modeIcon = isBoxing ? '🥊' : '⏱️';
@@ -68,6 +76,7 @@ export default function ResultScreen() {
   const resultConfig = workoutRecord?.config ?? config;
 
   const handleRepeat = () => {
+    loadConfig(workoutRecord?.config ?? config, workoutRecord?.presetId ?? null);
     clearLastResult();
     router.replace('/timer' as Href);
   };

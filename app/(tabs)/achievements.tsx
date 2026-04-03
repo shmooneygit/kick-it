@@ -26,7 +26,7 @@ export default function AchievementsScreen() {
   const level = getLevel(stats.totalRounds);
   const levelName = badgeText(language, level.name);
   const nextLevelName =
-    level.nextLevel === Infinity ? 'MAX' : badgeText(language, getLevel(level.nextLevel).name);
+    level.nextLevel === Infinity ? t('achievements.maxLevel') : badgeText(language, getLevel(level.nextLevel).name);
   const progressToNext =
     level.nextLevel === Infinity
       ? 1

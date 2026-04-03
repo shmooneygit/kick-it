@@ -73,10 +73,22 @@ export function SettingsForm({ mode }: SettingsFormProps) {
 
       if (state.config.mode !== mode) {
         resetConfig(mode);
+        setShowDuration(false);
+        setTargetMinutes(null);
         return undefined;
       }
 
       loadConfig(state.config, state.activePresetId);
+
+      if (state.activePresetId) {
+        const totalSec = state.config.rounds * (state.config.workDuration + state.config.restDuration);
+        setShowDuration(true);
+        setTargetMinutes(Math.max(5, Math.round(totalSec / 60)));
+      } else {
+        setShowDuration(false);
+        setTargetMinutes(null);
+      }
+
       return undefined;
     }, [loadConfig, mode, resetConfig]),
   );

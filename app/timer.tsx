@@ -200,13 +200,13 @@ export default function TimerScreen() {
       },
       {
         text: t('timer.yes'),
-          style: 'destructive',
-          onPress: async () => {
-            const routeParams = await saveWorkout(false);
-            await stopKeepAlive();
-            stop();
-            router.replace({
-              pathname: '/result',
+        style: 'destructive',
+        onPress: async () => {
+          const routeParams = await saveWorkout(false);
+          await stopKeepAlive();
+          stop();
+          router.replace({
+            pathname: '/result',
             params: routeParams ?? undefined,
           });
         },

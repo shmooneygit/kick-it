@@ -8,6 +8,7 @@ import {
   Linking,
   StyleSheet,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { useCallback, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettingsStore } from '@/store/settings-store';
@@ -25,6 +26,7 @@ export default function SettingsScreen() {
   const update = useSettingsStore((s) => s.update);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
   const [showSoundPicker, setShowSoundPicker] = useState(false);
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
   const { userPresets: boxingPresets, deletePreset: deleteBoxing } = usePresets('boxing');
   const { userPresets: tabataPresets, deletePreset: deleteTabata } = usePresets('tabata');
   const allUserPresets = useMemo(
@@ -132,7 +134,7 @@ export default function SettingsScreen() {
                   onPress={() => handleLanguageSwitch('uk')}
                 >
                   <Text style={[styles.langText, language === 'uk' && styles.langTextActive]}>
-                    🇺🇦 Українська
+                    🇺🇦 {t('settingsScreen.languageUkrainian')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -140,7 +142,7 @@ export default function SettingsScreen() {
                   onPress={() => handleLanguageSwitch('en')}
                 >
                   <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>
-                    🇬🇧 English
+                    🇬🇧 {t('settingsScreen.languageEnglish')}
                   </Text>
                 </Pressable>
               </View>
@@ -176,7 +178,7 @@ export default function SettingsScreen() {
             <View style={styles.card}>
               <View style={[styles.toggleRow, styles.rowDivider]}>
                 <Text style={styles.label}>{t('settingsScreen.version')}</Text>
-                <Text style={styles.aboutValue}>Fight Timer v1.0</Text>
+                <Text style={styles.aboutValue}>{t('settingsScreen.versionValue', { version: appVersion })}</Text>
               </View>
               <Pressable
                 style={styles.toggleRow}

@@ -104,6 +104,7 @@
     "title": "ДОСЯГНЕННЯ",
     "level": "Рівень",
     "next": "Наступний",
+    "maxLevel": "МАКС",
     "rounds": "раундів",
     "currentStreak": "Поточна серія",
     "bestStreak": "Найкраща серія",
@@ -120,9 +121,12 @@
     "timerSection": "Таймер",
     "defaultCountdown": "Відлік за замовчуванням",
     "language": "Мова",
+    "languageUkrainian": "Українська",
+    "languageEnglish": "English",
     "myPrograms": "Мої програми",
     "about": "Про додаток",
     "version": "Версія",
+    "versionValue": "Fight Timer v%{version}",
     "contactDev": "Написати розробнику"
   }
 }
