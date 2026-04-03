@@ -47,27 +47,56 @@ export function NumberStepper({
     }
   }, []);
 
+  const getNextValue = useCallback(() => {
+    if (valueRef.current < min) return min;
+    if (step <= 1) return Math.min(valueRef.current + step, max);
+
+    const offset = valueRef.current - min;
+    const remainder = offset % step;
+    const next =
+      remainder === 0
+        ? valueRef.current + step
+        : valueRef.current + (step - remainder);
+
+    return Math.min(next, max);
+  }, [max, min, step]);
+
+  const getPreviousValue = useCallback(() => {
+    if (valueRef.current > max) return max;
+    if (valueRef.current <= min) return min;
+    if (step <= 1) return Math.max(valueRef.current - step, min);
+
+    const offset = valueRef.current - min;
+    const remainder = offset % step;
+    const next =
+      remainder === 0
+        ? valueRef.current - step
+        : valueRef.current - remainder;
+
+    return Math.max(next, min);
+  }, [max, min, step]);
+
   const doIncrement = useCallback(() => {
     const now = Date.now();
     if (now - lastTapRef.current < 80) return;
     lastTapRef.current = now;
-    const next = Math.min(valueRef.current + step, max);
+    const next = getNextValue();
     if (next !== valueRef.current) {
       onChange(next);
       maybeHaptic();
     }
-  }, [step, max, onChange, maybeHaptic]);
+  }, [getNextValue, onChange, maybeHaptic]);
 
   const doDecrement = useCallback(() => {
     const now = Date.now();
     if (now - lastTapRef.current < 80) return;
     lastTapRef.current = now;
-    const next = Math.max(valueRef.current - step, min);
+    const next = getPreviousValue();
     if (next !== valueRef.current) {
       onChange(next);
       maybeHaptic();
     }
-  }, [step, min, onChange, maybeHaptic]);
+  }, [getPreviousValue, onChange, maybeHaptic]);
 
   const startRepeat = useCallback((action: () => void) => {
     action();

@@ -32,15 +32,15 @@ interface HistoryStore {
 }
 
 function calcStreak(
-  history: WorkoutRecord[],
   existingStreak: number,
+  bestStreak: number,
   lastWorkoutDate: string,
   newDate: string,
 ): { currentStreak: number; bestStreak: number } {
   const today = startOfDay(parseISO(newDate));
 
   if (!lastWorkoutDate) {
-    return { currentStreak: 1, bestStreak: Math.max(existingStreak, 1) };
+    return { currentStreak: 1, bestStreak: Math.max(bestStreak, 1) };
   }
 
   const lastDay = startOfDay(parseISO(lastWorkoutDate));
@@ -50,16 +50,16 @@ function calcStreak(
     // Same day — streak unchanged
     return {
       currentStreak: existingStreak,
-      bestStreak: Math.max(existingStreak, existingStreak),
+      bestStreak: Math.max(bestStreak, existingStreak),
     };
   }
   if (diff === 1) {
     // Consecutive day — extend streak
     const next = existingStreak + 1;
-    return { currentStreak: next, bestStreak: Math.max(existingStreak, next) };
+    return { currentStreak: next, bestStreak: Math.max(bestStreak, next) };
   }
   // Gap — reset streak
-  return { currentStreak: 1, bestStreak: Math.max(existingStreak, 1) };
+  return { currentStreak: 1, bestStreak: Math.max(bestStreak, 1) };
 }
 
 export const useHistoryStore = create<HistoryStore>((set, get) => ({
@@ -83,12 +83,16 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
 
   addWorkout: async (record) => {
     const { history, stats } = get();
-    const newHistory = [record, ...history];
+    let updatedHistory = [record, ...history];
+
+    if (updatedHistory.length > 500) {
+      updatedHistory = updatedHistory.slice(0, 500);
+    }
 
     const dateStr = format(parseISO(record.date), 'yyyy-MM-dd');
     const { currentStreak, bestStreak } = calcStreak(
-      newHistory,
       stats.currentStreak,
+      stats.bestStreak,
       stats.lastWorkoutDate,
       dateStr,
     );
@@ -106,10 +110,10 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
       lastWorkoutDate: dateStr,
     };
 
-    set({ history: newHistory, stats: newStats });
+    set({ history: updatedHistory, stats: newStats });
 
     await Promise.all([
-      AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory)),
+      AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory)),
       AsyncStorage.setItem(STATS_KEY, JSON.stringify(newStats)),
     ]);
   },

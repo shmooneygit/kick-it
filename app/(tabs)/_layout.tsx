@@ -5,7 +5,7 @@ import { t } from '@/lib/i18n';
 import { useSettingsStore } from '@/store/settings-store';
 
 export default function TabLayout() {
-  useSettingsStore((s) => s.settings.language);
+  useSettingsStore((s) => s.language);
 
   const renderEmoji = (emoji: string) => (
     <Text style={{ fontSize: 18, lineHeight: 20 }}>{emoji}</Text>

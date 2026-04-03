@@ -14,30 +14,17 @@ import {
   withOpacity,
 } from '@/constants/theme';
 import { createSessionResult } from '@/lib/session-result';
+import { formatConfigShorthand, formatTime, getPresetLabel } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { format, parseISO } from 'date-fns';
-import { BadgeDef, WorkoutConfig, WorkoutRecord } from '@/lib/types';
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function formatConfigShorthand(config: WorkoutConfig): string {
-  return `${config.rounds}×${formatTime(config.workDuration)}`;
-}
-
-function getPresetLabel(record?: WorkoutRecord): string {
-  return record?.presetName ?? t('custom_preset');
-}
+import { BadgeDef } from '@/lib/types';
 
 function badgeText(language: 'uk' | 'en', badge: BadgeDef): string {
   return language === 'uk' ? badge.name.uk : badge.name.en;
 }
 
 export default function ResultScreen() {
-  const language = useSettingsStore((s) => s.settings.language);
+  const language = useSettingsStore((s) => s.language);
 
   const router = useRouter();
   const params = useLocalSearchParams<{ recordId?: string; newBadgeIds?: string }>();

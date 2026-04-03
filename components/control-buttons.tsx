@@ -30,7 +30,7 @@ export function ControlButtons({
   onStop,
   onHome,
 }: ControlButtonsProps) {
-  useSettingsStore((s) => s.settings.language);
+  useSettingsStore((s) => s.language);
 
   const pauseGlow = useSharedValue(0.4);
 

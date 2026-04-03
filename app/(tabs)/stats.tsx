@@ -6,6 +6,7 @@ import { useHistoryStore } from '@/store/history-store';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { WorkoutRecord } from '@/lib/types';
+import { formatConfigShorthand, formatTime, getPresetLabel } from '@/lib/format';
 import {
   Colors,
   FontFamily,
@@ -28,32 +29,8 @@ import {
 
 type Period = 'week' | 'month' | 'all';
 
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  if (m >= 60) {
-    const h = Math.floor(m / 60);
-    const rm = m % 60;
-    return `${h}${t('stats.hourShort')} ${rm}${t('stats.minuteShort')}`;
-  }
-  return `${m}${t('stats.minuteShort')}`;
-}
-
-function formatClock(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function formatConfigShorthand(record: WorkoutRecord): string {
-  return `${record.config.rounds}×${formatClock(record.config.workDuration)}`;
-}
-
-function getPresetLabel(record: WorkoutRecord): string {
-  return record.presetName ?? t('custom_preset');
-}
-
 export default function StatsScreen() {
-  useSettingsStore((s) => s.settings.language);
+  useSettingsStore((s) => s.language);
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -115,7 +92,7 @@ export default function StatsScreen() {
             <Text style={styles.workoutTitle}>{getPresetLabel(item)}</Text>
             <Text style={styles.workoutMeta}>{formatConfigShorthand(item)}</Text>
           </View>
-          <Text style={styles.workoutDuration}>{formatClock(item.totalDuration)}</Text>
+          <Text style={styles.workoutDuration}>{formatTime(item.totalDuration)}</Text>
           <View style={styles.repeatPill}>
             <Text style={styles.repeatIcon}>▶</Text>
           </View>
@@ -154,7 +131,9 @@ export default function StatsScreen() {
       <View style={styles.metricsRow}>
         <View style={styles.metricCard}>
           <Text style={styles.metricLabel}>{t('stats.totalTime')}</Text>
-          <Text style={styles.metricValue}>{formatTime(periodStats.totalTime)}</Text>
+          <Text style={styles.metricValue}>
+            {formatTime(periodStats.totalTime, { style: 'summary' })}
+          </Text>
           <Text style={styles.metricSubtitle}>{periods.find((item) => item.key === period)?.label}</Text>
         </View>
         <View style={styles.metricCard}>

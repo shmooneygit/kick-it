@@ -36,7 +36,7 @@ export default function TimerScreen() {
   const activePresetId = useWorkoutStore((s) => s.activePresetId);
   const setLastResult = useWorkoutStore((s) => s.setLastResult);
   const clearLastResult = useWorkoutStore((s) => s.clearLastResult);
-  const language = useSettingsStore((s) => s.settings.language);
+  const language = useSettingsStore((s) => s.language);
   const addWorkout = useHistoryStore((s) => s.addWorkout);
   const checkAndUnlockBadges = useAchievementStore((s) => s.checkAndUnlockBadges);
   const { play } = useSound(config.soundScheme);
@@ -76,7 +76,11 @@ export default function TimerScreen() {
   );
 
   const onTick = useCallback(
-    (secondsRemaining: number) => {
+    (secondsRemaining: number, phase: TimerPhase) => {
+      if (phase === 'work' && secondsRemaining === 10) {
+        play('warning');
+      }
+
       if (secondsRemaining <= 3 && secondsRemaining > 0) {
         play('tick');
       }

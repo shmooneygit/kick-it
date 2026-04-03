@@ -16,7 +16,7 @@ import { useWorkoutStore } from '@/store/workout-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { triggerHaptic, triggerNotification } from '@/lib/haptics';
 import { usePresets } from '@/hooks/use-presets';
-import { TimerMode, SoundScheme, Preset } from '@/lib/types';
+import { TimerMode, Preset } from '@/lib/types';
 import { t } from '@/lib/i18n';
 import {
   Colors,
@@ -25,6 +25,7 @@ import {
   BorderRadius,
   Spacing,
 } from '@/constants/theme';
+import { getSoundSchemeLabel } from '@/lib/format';
 import { NumberStepper } from './number-stepper';
 import { DurationStepper } from './duration-stepper';
 import { NeonButton } from './neon-button';
@@ -45,19 +46,8 @@ function formatTotalTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-function getSoundSchemeLabel(scheme: SoundScheme): string {
-  switch (scheme) {
-    case 'bell':
-      return t('sound_bell');
-    case 'beep':
-      return t('sound_beep');
-    case 'whistle':
-      return t('sound_whistle');
-  }
-}
-
 export function SettingsForm({ mode }: SettingsFormProps) {
-  useSettingsStore((s) => s.settings.language);
+  useSettingsStore((s) => s.language);
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -273,9 +263,9 @@ export function SettingsForm({ mode }: SettingsFormProps) {
             <DurationStepper
               label={isBoxing ? t('settings.roundDuration') : t('settings.workDuration')}
               value={config.workDuration}
-              min={isBoxing ? 30 : 5}
-              max={isBoxing ? 600 : 300}
-              step={isBoxing ? 15 : 5}
+              min={15}
+              max={900}
+              step={15}
               onChange={(v) => {
                 setConfig({ workDuration: v });
                 setActivePresetId(null);
@@ -289,7 +279,7 @@ export function SettingsForm({ mode }: SettingsFormProps) {
             <DurationStepper
               label={t('settings.restDuration')}
               value={config.restDuration}
-              min={isBoxing ? 10 : 5}
+              min={5}
               max={300}
               step={5}
               onChange={(v) => {
@@ -303,8 +293,9 @@ export function SettingsForm({ mode }: SettingsFormProps) {
             <NumberStepper
               label={t('settings.countdown')}
               value={config.countdownDuration}
-              min={3}
+              min={5}
               max={30}
+              step={5}
               onChange={(v) => {
                 setConfig({ countdownDuration: v });
                 setActivePresetId(null);

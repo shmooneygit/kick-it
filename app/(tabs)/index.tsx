@@ -7,6 +7,7 @@ import { useHistoryStore } from '@/store/history-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { ModeCard } from '@/components/mode-card';
 import { WorkoutRecord } from '@/lib/types';
+import { formatConfigShorthand, formatTime, getPresetLabel } from '@/lib/format';
 import { Colors, FontFamily, Spacing } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 
@@ -17,22 +18,8 @@ function getTimeGreeting(): string {
   return t('greetingEvening');
 }
 
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function formatConfigShorthand(record: WorkoutRecord): string {
-  return `${record.config.rounds}×${formatTime(record.config.workDuration)}`;
-}
-
-function getPresetLabel(record: WorkoutRecord): string {
-  return record.presetName ?? t('custom_preset');
-}
-
 export default function HomeScreen() {
-  useSettingsStore((s) => s.settings.language);
+  useSettingsStore((s) => s.language);
 
   const router = useRouter();
   const insets = useSafeAreaInsets();

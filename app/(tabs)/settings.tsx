@@ -8,40 +8,35 @@ import {
   Linking,
   StyleSheet,
 } from 'react-native';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettingsStore } from '@/store/settings-store';
 import { usePresets } from '@/hooks/use-presets';
-import { SoundScheme } from '@/lib/types';
 import { NumberStepper } from '@/components/number-stepper';
 import { SoundPicker } from '@/components/sound-picker';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
-import i18n, { t } from '@/lib/i18n';
-
-function getSoundSchemeLabel(scheme: SoundScheme): string {
-  switch (scheme) {
-    case 'bell':
-      return t('sound_bell');
-    case 'beep':
-      return t('sound_beep');
-    case 'whistle':
-      return t('sound_whistle');
-  }
-}
+import { t } from '@/lib/i18n';
+import { getSoundSchemeLabel } from '@/lib/format';
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { settings, update } = useSettingsStore();
+  const settings = useSettingsStore((s) => s.settings);
+  const language = useSettingsStore((s) => s.language);
+  const update = useSettingsStore((s) => s.update);
+  const setLanguage = useSettingsStore((s) => s.setLanguage);
   const [showSoundPicker, setShowSoundPicker] = useState(false);
   const { userPresets: boxingPresets, deletePreset: deleteBoxing } = usePresets('boxing');
   const { userPresets: tabataPresets, deletePreset: deleteTabata } = usePresets('tabata');
-  const allUserPresets = [...boxingPresets, ...tabataPresets];
+  const allUserPresets = useMemo(
+    () => [...boxingPresets, ...tabataPresets],
+    [boxingPresets, tabataPresets],
+  );
 
   const handleLanguageSwitch = useCallback(
     (lang: 'uk' | 'en') => {
-      update({ language: lang });
+      void setLanguage(lang);
     },
-    [update],
+    [setLanguage],
   );
 
   const handleDeletePreset = useCallback(
@@ -52,13 +47,14 @@ export default function SettingsScreen() {
           text: t('settings.delete'),
           style: 'destructive',
           onPress: () => {
-            if (id.includes('boxing')) deleteBoxing(id);
-            else deleteTabata(id);
+            const preset = allUserPresets.find((item) => item.id === id);
+            if (preset?.mode === 'boxing') deleteBoxing(id);
+            else if (preset?.mode === 'tabata') deleteTabata(id);
           },
         },
       ]);
     },
-    [deleteBoxing, deleteTabata],
+    [allUserPresets, deleteBoxing, deleteTabata],
   );
 
   return (
@@ -118,8 +114,9 @@ export default function SettingsScreen() {
               <NumberStepper
                 label={t('settingsScreen.defaultCountdown')}
                 value={settings.defaultCountdown}
-                min={3}
+                min={5}
                 max={30}
+                step={5}
                 onChange={(v) => update({ defaultCountdown: v })}
                 formatValue={(v) => `${v}${t('settings.countdownUnit')}`}
                 compact
@@ -131,18 +128,18 @@ export default function SettingsScreen() {
             <View style={styles.card}>
               <View style={styles.pillRow}>
                 <Pressable
-                  style={[styles.langPill, settings.language === 'uk' && styles.langPillActive]}
+                  style={[styles.langPill, language === 'uk' && styles.langPillActive]}
                   onPress={() => handleLanguageSwitch('uk')}
                 >
-                  <Text style={[styles.langText, settings.language === 'uk' && styles.langTextActive]}>
+                  <Text style={[styles.langText, language === 'uk' && styles.langTextActive]}>
                     🇺🇦 Українська
                   </Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.langPill, settings.language === 'en' && styles.langPillActive]}
+                  style={[styles.langPill, language === 'en' && styles.langPillActive]}
                   onPress={() => handleLanguageSwitch('en')}
                 >
-                  <Text style={[styles.langText, settings.language === 'en' && styles.langTextActive]}>
+                  <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>
                     🇬🇧 English
                   </Text>
                 </Pressable>
@@ -156,7 +153,7 @@ export default function SettingsScreen() {
             ) : (
               <View style={styles.card}>
                 {allUserPresets.map((preset) => {
-                  const locale = i18n.locale === 'uk' ? 'uk' : 'en';
+                  const locale = language === 'uk' ? 'uk' : 'en';
                   const name = preset.name[locale] || preset.name.en;
                   return (
                     <View

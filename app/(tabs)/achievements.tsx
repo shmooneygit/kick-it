@@ -9,14 +9,14 @@ import { badgeDefs } from '@/lib/badges';
 import { getLevel } from '@/lib/levels';
 import { BadgeDef } from '@/lib/types';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
-import i18n, { t } from '@/lib/i18n';
+import { t } from '@/lib/i18n';
 
-function badgeText(obj: { uk: string; en: string }): string {
-  return i18n.locale === 'uk' ? obj.uk : obj.en;
+function badgeText(language: 'uk' | 'en', obj: { uk: string; en: string }): string {
+  return language === 'uk' ? obj.uk : obj.en;
 }
 
 export default function AchievementsScreen() {
-  useSettingsStore((s) => s.settings.language);
+  const language = useSettingsStore((s) => s.language);
 
   const insets = useSafeAreaInsets();
   const stats = useHistoryStore((s) => s.stats);
@@ -24,9 +24,9 @@ export default function AchievementsScreen() {
   const [selectedBadge, setSelectedBadge] = useState<BadgeDef | null>(null);
 
   const level = getLevel(stats.totalRounds);
-  const levelName = badgeText(level.name);
+  const levelName = badgeText(language, level.name);
   const nextLevelName =
-    level.nextLevel === Infinity ? 'MAX' : badgeText(getLevel(level.nextLevel).name);
+    level.nextLevel === Infinity ? 'MAX' : badgeText(language, getLevel(level.nextLevel).name);
   const progressToNext =
     level.nextLevel === Infinity
       ? 1
@@ -104,7 +104,7 @@ export default function AchievementsScreen() {
                 style={[styles.badgeName, !earned && styles.badgeNameLocked]}
                 numberOfLines={1}
               >
-                {badgeText(def.name)}
+                {badgeText(language, def.name)}
               </Text>
               {earned ? (
                 <Text style={styles.badgeCheck}>✓</Text>
@@ -132,8 +132,8 @@ export default function AchievementsScreen() {
             {selectedBadge && (
               <>
                 <Text style={styles.modalIcon}>{selectedBadge.icon}</Text>
-                <Text style={styles.modalName}>{badgeText(selectedBadge.name)}</Text>
-                <Text style={styles.modalDesc}>{badgeText(selectedBadge.description)}</Text>
+                <Text style={styles.modalName}>{badgeText(language, selectedBadge.name)}</Text>
+                <Text style={styles.modalDesc}>{badgeText(language, selectedBadge.description)}</Text>
                 {(() => {
                   const state = badgeMap.get(selectedBadge.id);
                   if (state?.earned) return <Text style={styles.modalEarned}>{t('achievements.earned')}</Text>;

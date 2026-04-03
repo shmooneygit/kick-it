@@ -20,47 +20,70 @@ const defaults: AppSettings = {
   onboardingComplete: false,
 };
 
+function clampToStep(value: number, min: number, max: number, step: number): number {
+  if (!Number.isFinite(value)) return min;
+  const clamped = Math.min(max, Math.max(min, value));
+  const steps = Math.round((clamped - min) / step);
+  return min + steps * step;
+}
+
+function normalizeSettings(settings: AppSettings): AppSettings {
+  return {
+    ...settings,
+    language: settings.language === 'uk' ? 'uk' : 'en',
+    defaultCountdown: clampToStep(settings.defaultCountdown, 5, 30, 5),
+  };
+}
+
 interface SettingsStore {
   settings: AppSettings;
+  language: 'uk' | 'en';
   loaded: boolean;
   load: () => Promise<void>;
   update: (partial: Partial<AppSettings>) => Promise<void>;
+  setLanguage: (language: 'uk' | 'en') => Promise<void>;
   completeOnboarding: () => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   settings: { ...defaults },
+  language: defaults.language,
   loaded: false,
 
   load: async () => {
     try {
       const raw = await AsyncStorage.getItem(SETTINGS_KEY);
-      const nextSettings = raw
-        ? { ...defaults, ...(JSON.parse(raw) as Partial<AppSettings>) }
-        : { ...defaults };
+      const nextSettings = normalizeSettings(
+        raw
+          ? { ...defaults, ...(JSON.parse(raw) as Partial<AppSettings>) }
+          : { ...defaults },
+      );
       i18n.locale = nextSettings.language;
-      if (raw) {
-        set({ settings: nextSettings, loaded: true });
-      } else {
-        set({ settings: nextSettings, loaded: true });
-      }
+      set({ settings: nextSettings, language: nextSettings.language, loaded: true });
     } catch {
       i18n.locale = defaults.language;
-      set({ loaded: true });
+      set({ settings: { ...defaults }, language: defaults.language, loaded: true });
     }
   },
 
   update: async (partial) => {
-    const next = { ...get().settings, ...partial };
+    const next = normalizeSettings({ ...get().settings, ...partial });
     i18n.locale = next.language;
-    set({ settings: next });
+    set({ settings: next, language: next.language });
+    await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+  },
+
+  setLanguage: async (language) => {
+    const next = normalizeSettings({ ...get().settings, language });
+    i18n.locale = next.language;
+    set({ settings: next, language: next.language });
     await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
   },
 
   completeOnboarding: async () => {
-    const next = { ...get().settings, onboardingComplete: true };
+    const next = normalizeSettings({ ...get().settings, onboardingComplete: true });
     i18n.locale = next.language;
-    set({ settings: next });
+    set({ settings: next, language: next.language });
     await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
   },
 }));

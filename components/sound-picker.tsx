@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SoundScheme } from '@/lib/types';
 import { t } from '@/lib/i18n';
+import { useSettingsStore } from '@/store/settings-store';
 import {
   Colors,
   FontFamily,
@@ -32,6 +33,8 @@ export function SoundPicker({
   onSelect,
   onClose,
 }: SoundPickerProps) {
+  useSettingsStore((s) => s.language);
+
   const handleSelect = (scheme: SoundScheme) => {
     onSelect(scheme);
     onClose();

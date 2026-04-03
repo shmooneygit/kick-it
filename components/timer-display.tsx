@@ -9,6 +9,7 @@ import Animated, {
 import { useEffect } from 'react';
 import { useSettingsStore } from '@/store/settings-store';
 import { TimerPhase, TimerMode } from '@/lib/types';
+import { formatTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import {
   Colors,
@@ -26,12 +27,6 @@ interface TimerDisplayProps {
   totalElapsed: number;
   mode: TimerMode;
   isPaused: boolean;
-}
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 function getPhaseLabel(phase: TimerPhase, mode: TimerMode, round: number): string {
@@ -56,7 +51,7 @@ export function TimerDisplay({
   mode,
   isPaused,
 }: TimerDisplayProps) {
-  useSettingsStore((s) => s.settings.language);
+  useSettingsStore((s) => s.language);
 
   const phaseColor = getPhaseColor(phase);
   const scale = useSharedValue(1);
