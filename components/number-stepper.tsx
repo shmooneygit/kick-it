@@ -24,18 +24,19 @@ export function NumberStepper({
   formatValue,
   compact = false,
 }: NumberStepperProps) {
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const lastTapRef = useRef(0);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdCountRef = useRef(0);
   const lastHapticRef = useRef(0);
   const valueRef = useRef(value);
   valueRef.current = value;
 
   useEffect(() => {
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      if (holdTimerRef.current) {
+        clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
       }
+      holdCountRef.current = 0;
     };
   }, []);
 
@@ -45,6 +46,12 @@ export function NumberStepper({
       lastHapticRef.current = now;
       triggerHaptic();
     }
+  }, []);
+
+  const getDelay = useCallback((count: number): number => {
+    if (count < 5) return 300;
+    if (count < 15) return 150;
+    return 80;
   }, []);
 
   const getNextValue = useCallback(() => {
@@ -77,9 +84,6 @@ export function NumberStepper({
   }, [max, min, step]);
 
   const doIncrement = useCallback(() => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 80) return;
-    lastTapRef.current = now;
     const next = getNextValue();
     if (next !== valueRef.current) {
       onChange(next);
@@ -88,9 +92,6 @@ export function NumberStepper({
   }, [getNextValue, onChange, maybeHaptic]);
 
   const doDecrement = useCallback(() => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 80) return;
-    lastTapRef.current = now;
     const next = getPreviousValue();
     if (next !== valueRef.current) {
       onChange(next);
@@ -98,17 +99,27 @@ export function NumberStepper({
     }
   }, [getPreviousValue, onChange, maybeHaptic]);
 
-  const startRepeat = useCallback((action: () => void) => {
-    action();
-    intervalRef.current = setInterval(action, 150);
+  const stopHold = useCallback(() => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    holdCountRef.current = 0;
   }, []);
 
-  const stopRepeat = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  }, []);
+  const startHold = useCallback((action: () => void) => {
+    action();
+    holdCountRef.current = 0;
+
+    const tick = () => {
+      action();
+      holdCountRef.current += 1;
+      holdTimerRef.current = setTimeout(tick, getDelay(holdCountRef.current));
+    };
+
+    stopHold();
+    holdTimerRef.current = setTimeout(tick, 400);
+  }, [getDelay, stopHold]);
 
   const displayValue = formatValue ? formatValue(value) : String(value);
   const btnSize = compact ? 32 : 40;
@@ -127,8 +138,8 @@ export function NumberStepper({
             { width: btnSize, height: btnSize, borderRadius: btnSize / 2 },
             value <= min && styles.buttonDisabled,
           ]}
-          onPressIn={() => startRepeat(doDecrement)}
-          onPressOut={stopRepeat}
+          onPressIn={() => startHold(doDecrement)}
+          onPressOut={stopHold}
           disabled={value <= min}
         >
           <Text style={styles.buttonText}>−</Text>
@@ -144,8 +155,8 @@ export function NumberStepper({
             { width: btnSize, height: btnSize, borderRadius: btnSize / 2 },
             value >= max && styles.buttonDisabled,
           ]}
-          onPressIn={() => startRepeat(doIncrement)}
-          onPressOut={stopRepeat}
+          onPressIn={() => startHold(doIncrement)}
+          onPressOut={stopHold}
           disabled={value >= max}
         >
           <Text style={styles.buttonText}>+</Text>

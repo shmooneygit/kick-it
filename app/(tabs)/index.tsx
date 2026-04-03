@@ -23,20 +23,16 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const resetConfig = useWorkoutStore((s) => s.resetConfig);
   const loadConfig = useWorkoutStore((s) => s.loadConfig);
   const history = useHistoryStore((s) => s.history);
-  const stats = useHistoryStore((s) => s.stats);
 
   const recentWorkouts = history.slice(0, 3);
 
   const handleBoxing = () => {
-    resetConfig('boxing');
     router.push('/boxing/config' as Href);
   };
 
   const handleTabata = () => {
-    resetConfig('tabata');
     router.push('/tabata/config' as Href);
   };
 
@@ -52,14 +48,7 @@ export default function HomeScreen() {
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
       {/* Header with streak */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>{getTimeGreeting()}</Text>
-        </View>
-        {stats.currentStreak > 0 && (
-          <View style={styles.streakBadge}>
-            <Text style={styles.streakText}>🔥 {stats.currentStreak}</Text>
-          </View>
-        )}
+        <Text style={styles.greeting}>{getTimeGreeting()}</Text>
       </View>
 
       {/* Mode cards */}
@@ -114,8 +103,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 16,
   },
@@ -123,17 +110,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bodySemiBold,
     fontSize: 16,
     color: Colors.textPrimary,
-  },
-  streakBadge: {
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: 20,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-  },
-  streakText: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 14,
-    color: Colors.neonAmber,
   },
   cards: {
     flexGrow: 1,

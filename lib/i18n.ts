@@ -6,9 +6,8 @@ import en from '@/locales/en.json';
 const i18n = new I18n({ uk, en });
 
 const deviceLocale = getLocales()[0]?.languageCode ?? 'uk';
-i18n.locale = deviceLocale === 'uk' ? 'uk' : 'en';
 i18n.enableFallback = true;
-i18n.defaultLocale = 'en';
+i18n.defaultLocale = deviceLocale === 'uk' ? 'uk' : 'en';
 
 export default i18n;
 

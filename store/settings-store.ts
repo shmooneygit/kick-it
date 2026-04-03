@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocales } from 'expo-localization';
-import i18n from '@/lib/i18n';
 import { AppSettings } from '@/lib/types';
 
 const SETTINGS_KEY = 'app_settings';
@@ -58,31 +57,26 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           ? { ...defaults, ...(JSON.parse(raw) as Partial<AppSettings>) }
           : { ...defaults },
       );
-      i18n.locale = nextSettings.language;
       set({ settings: nextSettings, language: nextSettings.language, loaded: true });
     } catch {
-      i18n.locale = defaults.language;
       set({ settings: { ...defaults }, language: defaults.language, loaded: true });
     }
   },
 
   update: async (partial) => {
     const next = normalizeSettings({ ...get().settings, ...partial });
-    i18n.locale = next.language;
     set({ settings: next, language: next.language });
     await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
   },
 
   setLanguage: async (language) => {
     const next = normalizeSettings({ ...get().settings, language });
-    i18n.locale = next.language;
     set({ settings: next, language: next.language });
     await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
   },
 
   completeOnboarding: async () => {
     const next = normalizeSettings({ ...get().settings, onboardingComplete: true });
-    i18n.locale = next.language;
     set({ settings: next, language: next.language });
     await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
   },

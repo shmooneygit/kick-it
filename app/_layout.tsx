@@ -14,6 +14,7 @@ import {
   Exo2_700Bold,
 } from '@expo-google-fonts/exo-2';
 import { Colors } from '@/constants/theme';
+import i18n from '@/lib/i18n';
 import { useSettingsStore } from '@/store/settings-store';
 import { useHistoryStore } from '@/store/history-store';
 import { useAchievementStore } from '@/store/achievement-store';
@@ -31,6 +32,7 @@ export default function RootLayout() {
   });
 
   const loadSettings = useSettingsStore((s) => s.load);
+  const language = useSettingsStore((s) => s.language);
   const settingsLoaded = useSettingsStore((s) => s.loaded);
   const loadHistory = useHistoryStore((s) => s.load);
   const historyLoaded = useHistoryStore((s) => s.loaded);
@@ -39,6 +41,8 @@ export default function RootLayout() {
 
   const isReady =
     fontsLoaded && settingsLoaded && historyLoaded && achievementsLoaded;
+
+  i18n.locale = language;
 
   useEffect(() => {
     loadSettings();
@@ -56,6 +60,7 @@ export default function RootLayout() {
 
   return (
     <View
+      key={language}
       style={{ flex: 1, backgroundColor: Colors.background }}
       onLayout={onLayoutRootView}
     >

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useState, useMemo, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, Href } from 'expo-router';
+import { useRouter, Href, useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useSettingsStore } from '@/store/settings-store';
@@ -53,6 +53,8 @@ export function SettingsForm({ mode }: SettingsFormProps) {
   const insets = useSafeAreaInsets();
   const config = useWorkoutStore((s) => s.config);
   const setConfig = useWorkoutStore((s) => s.setConfig);
+  const resetConfig = useWorkoutStore((s) => s.resetConfig);
+  const loadConfig = useWorkoutStore((s) => s.loadConfig);
   const activePresetId = useWorkoutStore((s) => s.activePresetId);
   const setActivePresetId = useWorkoutStore((s) => s.setActivePresetId);
   const { presets, savePreset, deletePreset, getPresetName } = usePresets(mode);
@@ -64,6 +66,20 @@ export function SettingsForm({ mode }: SettingsFormProps) {
   const [showSoundPicker, setShowSoundPicker] = useState(false);
 
   const isBoxing = mode === 'boxing';
+
+  useFocusEffect(
+    useCallback(() => {
+      const state = useWorkoutStore.getState();
+
+      if (state.config.mode !== mode) {
+        resetConfig(mode);
+        return undefined;
+      }
+
+      loadConfig(state.config, state.activePresetId);
+      return undefined;
+    }, [loadConfig, mode, resetConfig]),
+  );
 
   // Calculate total workout time
   const totalSeconds = useMemo(() => {
@@ -265,7 +281,7 @@ export function SettingsForm({ mode }: SettingsFormProps) {
               value={config.workDuration}
               min={15}
               max={900}
-              step={15}
+              step={5}
               onChange={(v) => {
                 setConfig({ workDuration: v });
                 setActivePresetId(null);

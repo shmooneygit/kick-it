@@ -53,28 +53,47 @@ interface WorkoutStore {
   resetTimerState: () => void;
 }
 
+function sanitizeDuration(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+function sanitizeRounds(value: number): number {
+  return Math.max(1, Math.round(value));
+}
+
+function sanitizeConfig(config: WorkoutConfig): WorkoutConfig {
+  return {
+    ...config,
+    rounds: sanitizeRounds(config.rounds),
+    workDuration: sanitizeDuration(config.workDuration, 15, 900),
+    restDuration: sanitizeDuration(config.restDuration, 5, 300),
+    countdownDuration: sanitizeDuration(config.countdownDuration, 5, 30),
+  };
+}
+
 function createConfig(mode: TimerMode): WorkoutConfig {
   const settings = useSettingsStore.getState().settings;
   const base = mode === 'boxing' ? DEFAULT_BOXING : DEFAULT_TABATA;
 
-  return {
+  return sanitizeConfig({
     ...base,
     countdownDuration: settings.defaultCountdown,
     announceRounds: settings.announceRounds,
     soundScheme: settings.soundScheme,
-  };
+  });
 }
 
 export const useWorkoutStore = create<WorkoutStore>((set) => ({
   config: createConfig('boxing'),
   setConfig: (partial) =>
-    set((s) => ({ config: { ...s.config, ...partial } })),
+    set((s) => ({ config: sanitizeConfig({ ...s.config, ...partial }) })),
   resetConfig: (mode) =>
     set({
       config: createConfig(mode),
       activePresetId: null,
     }),
-  loadConfig: (config, presetId = null) => set({ config, activePresetId: presetId }),
+  loadConfig: (config, presetId = null) =>
+    set({ config: sanitizeConfig(config), activePresetId: presetId }),
   activePresetId: null,
   setActivePresetId: (id) => set({ activePresetId: id }),
   lastResult: null,
