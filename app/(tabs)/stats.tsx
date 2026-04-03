@@ -48,6 +48,10 @@ function formatConfigShorthand(record: WorkoutRecord): string {
   return `${record.config.rounds}×${formatClock(record.config.workDuration)}`;
 }
 
+function getPresetLabel(record: WorkoutRecord): string {
+  return record.presetName ?? t('custom_preset');
+}
+
 export default function StatsScreen() {
   useSettingsStore((s) => s.settings.language);
 
@@ -108,9 +112,7 @@ export default function StatsScreen() {
         <Pressable style={styles.workoutCard} onPress={() => handleRepeat(item)}>
           <Text style={styles.workoutIcon}>{modeIcon}</Text>
           <View style={styles.workoutInfo}>
-            <Text style={styles.workoutTitle}>
-              {item.mode === 'boxing' ? t('home.boxing') : t('home.tabata')}
-            </Text>
+            <Text style={styles.workoutTitle}>{getPresetLabel(item)}</Text>
             <Text style={styles.workoutMeta}>{formatConfigShorthand(item)}</Text>
           </View>
           <Text style={styles.workoutDuration}>{formatClock(item.totalDuration)}</Text>

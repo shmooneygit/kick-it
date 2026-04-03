@@ -27,6 +27,10 @@ function formatConfigShorthand(record: WorkoutRecord): string {
   return `${record.config.rounds}×${formatTime(record.config.workDuration)}`;
 }
 
+function getPresetLabel(record: WorkoutRecord): string {
+  return record.presetName ?? t('custom_preset');
+}
+
 export default function HomeScreen() {
   useSettingsStore((s) => s.settings.language);
 
@@ -99,9 +103,7 @@ export default function HomeScreen() {
             <Pressable key={w.id} style={styles.recentCard} onPress={() => handleRepeat(w)}>
               <Text style={styles.recentIcon}>{w.mode === 'boxing' ? '🥊' : '⏱️'}</Text>
               <View style={styles.recentInfo}>
-                <Text style={styles.recentTitle}>
-                  {w.mode === 'boxing' ? t('home.boxing') : t('home.tabata')}
-                </Text>
+                <Text style={styles.recentTitle}>{getPresetLabel(w)}</Text>
                 <Text style={styles.recentMeta}>{formatConfigShorthand(w)}</Text>
               </View>
               <Text style={styles.recentDuration}>{formatTime(w.totalDuration)}</Text>

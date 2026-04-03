@@ -1,4 +1,10 @@
 {
+  "custom_preset": "Custom",
+  "sound_scheme": "Sound scheme",
+  "sound_bell": "Bell",
+  "sound_beep": "Beep",
+  "sound_whistle": "Whistle",
+  "new_badge": "New badge!",
   "greetingMorning": "Good morning, fighter! 👊",
   "greetingAfternoon": "Good afternoon, fighter! 👊",
   "greetingEvening": "Good evening, fighter! 👊",

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BadgeState, UserStats, WorkoutRecord } from '@/lib/types';
+import { BadgeDef, BadgeState, WorkoutRecord } from '@/lib/types';
 import { badgeDefs, checkBadge } from '@/lib/badges';
+import { useHistoryStore } from '@/store/history-store';
 
 const BADGES_KEY = 'badge_states';
 
@@ -9,10 +10,8 @@ interface AchievementStore {
   badges: BadgeState[];
   loaded: boolean;
   load: () => Promise<void>;
-  evaluateAfterWorkout: (
-    stats: UserStats,
-    workout: WorkoutRecord,
-  ) => Promise<string[]>;
+  checkAndUnlockBadges: (workout: WorkoutRecord) => Promise<string[]>;
+  getBadgesByIds: (ids: string[]) => BadgeDef[];
 }
 
 export const useAchievementStore = create<AchievementStore>((set, get) => ({
@@ -29,7 +28,8 @@ export const useAchievementStore = create<AchievementStore>((set, get) => ({
     }
   },
 
-  evaluateAfterWorkout: async (stats, workout) => {
+  checkAndUnlockBadges: async (workout) => {
+    const stats = useHistoryStore.getState().stats;
     const existing = get().badges;
     const existingMap = new Map(existing.map((b) => [b.id, b]));
     const newlyEarned: string[] = [];
@@ -62,5 +62,19 @@ export const useAchievementStore = create<AchievementStore>((set, get) => ({
     await AsyncStorage.setItem(BADGES_KEY, JSON.stringify(updated));
 
     return newlyEarned;
+  },
+
+  getBadgesByIds: (ids) => {
+    const earnedMap = new Map(
+      get()
+        .badges
+        .filter((badge) => badge.earned)
+        .map((badge) => [badge.id, badge]),
+    );
+
+    return ids.flatMap((id) => {
+      const def = badgeDefs.find((badge) => badge.id === id);
+      return def && earnedMap.has(id) ? [def] : [];
+    });
   },
 }));

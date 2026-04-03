@@ -38,6 +38,7 @@ export interface WorkoutRecord {
   totalDuration: number;
   wasCompleted: boolean;
   presetId?: string;
+  presetName?: string;
 }
 
 export interface SessionResult {

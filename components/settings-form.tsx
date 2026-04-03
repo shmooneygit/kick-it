@@ -24,21 +24,15 @@ import {
   FontSize,
   BorderRadius,
   Spacing,
-  withOpacity,
 } from '@/constants/theme';
 import { NumberStepper } from './number-stepper';
 import { DurationStepper } from './duration-stepper';
 import { NeonButton } from './neon-button';
+import { SoundPicker } from './sound-picker';
 
 interface SettingsFormProps {
   mode: TimerMode;
 }
-
-const SOUND_SCHEMES: { key: SoundScheme; labelKey: string }[] = [
-  { key: 'bell', labelKey: 'settings.bell' },
-  { key: 'beep', labelKey: 'settings.beep' },
-  { key: 'whistle', labelKey: 'settings.whistle' },
-];
 
 function formatTotalTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -49,6 +43,17 @@ function formatTotalTime(seconds: number): string {
     return `${h}:${rm.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   }
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function getSoundSchemeLabel(scheme: SoundScheme): string {
+  switch (scheme) {
+    case 'bell':
+      return t('sound_bell');
+    case 'beep':
+      return t('sound_beep');
+    case 'whistle':
+      return t('sound_whistle');
+  }
 }
 
 export function SettingsForm({ mode }: SettingsFormProps) {
@@ -66,6 +71,7 @@ export function SettingsForm({ mode }: SettingsFormProps) {
   const [targetMinutes, setTargetMinutes] = useState<number | null>(null);
   const [showSaveInput, setShowSaveInput] = useState(false);
   const [saveInputName, setSaveInputName] = useState('');
+  const [showSoundPicker, setShowSoundPicker] = useState(false);
 
   const isBoxing = mode === 'boxing';
 
@@ -326,34 +332,18 @@ export function SettingsForm({ mode }: SettingsFormProps) {
               />
             </View>
           </View>
-          <View style={styles.soundCard}>
+          <Pressable
+            style={styles.soundCard}
+            onPress={() => setShowSoundPicker(true)}
+          >
             <Text style={styles.toggleLabel}>🔔 {t('settings.soundScheme')}</Text>
-            <View style={styles.soundRow}>
-              {SOUND_SCHEMES.map(({ key, labelKey }) => {
-                const selected = config.soundScheme === key;
-                return (
-                  <Pressable
-                    key={key}
-                    style={[styles.soundPill, selected && styles.soundPillSelected]}
-                    onPress={() => {
-                      setConfig({ soundScheme: key });
-                      setActivePresetId(null);
-                      triggerHaptic();
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.soundPillText,
-                        selected && styles.soundPillTextSelected,
-                      ]}
-                    >
-                      {t(labelKey)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+            <View style={styles.soundValueRow}>
+              <Text style={styles.soundValue}>
+                {getSoundSchemeLabel(config.soundScheme)}
+              </Text>
+              <Text style={styles.soundChevron}>▾</Text>
             </View>
-          </View>
+          </Pressable>
         </View>
 
         {/* Total workout info */}
@@ -375,6 +365,17 @@ export function SettingsForm({ mode }: SettingsFormProps) {
           fullWidth
         />
       </View>
+
+      <SoundPicker
+        visible={showSoundPicker}
+        currentScheme={config.soundScheme}
+        onSelect={(scheme) => {
+          setConfig({ soundScheme: scheme });
+          setActivePresetId(null);
+          triggerHaptic();
+        }}
+        onClose={() => setShowSoundPicker(false)}
+      />
     </View>
   );
 }
@@ -547,30 +548,20 @@ const styles = StyleSheet.create({
   switchSmall: {
     transform: [{ scale: 0.85 }],
   },
-  soundRow: {
+  soundValueRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
   },
-  soundPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.pill,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceLight,
-  },
-  soundPillSelected: {
-    borderColor: Colors.neonCyan,
-    backgroundColor: withOpacity(Colors.neonCyan, 0.1),
-  },
-  soundPillText: {
+  soundValue: {
     fontFamily: FontFamily.body,
-    fontSize: 12,
-    color: Colors.textMuted,
+    fontSize: 14,
+    color: Colors.neonCyan,
   },
-  soundPillTextSelected: {
+  soundChevron: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 14,
     color: Colors.neonCyan,
   },
   // Total

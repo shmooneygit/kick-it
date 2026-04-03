@@ -1,8 +1,9 @@
 import { View, Alert, StyleSheet, Dimensions } from 'react-native';
 import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, Href } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -17,12 +18,15 @@ import { triggerHaptic, triggerNotification } from '@/lib/haptics';
 import * as Haptics from 'expo-haptics';
 import { TimerDisplay } from '@/components/timer-display';
 import { ControlButtons } from '@/components/control-buttons';
-import { TimerPhase } from '@/lib/types';
+import { TimerPhase, UserPreset } from '@/lib/types';
 import { createSessionResult } from '@/lib/session-result';
+import { getPresetsForMode } from '@/lib/presets';
 import { Colors, getPhaseColor } from '@/constants/theme';
 import { t } from '@/lib/i18n';
+import { useSettingsStore } from '@/store/settings-store';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const PRESET_STORAGE_KEY = 'workout_presets_v2';
 
 export default function TimerScreen() {
   useKeepAwake();
@@ -32,11 +36,13 @@ export default function TimerScreen() {
   const activePresetId = useWorkoutStore((s) => s.activePresetId);
   const setLastResult = useWorkoutStore((s) => s.setLastResult);
   const clearLastResult = useWorkoutStore((s) => s.clearLastResult);
+  const language = useSettingsStore((s) => s.settings.language);
   const addWorkout = useHistoryStore((s) => s.addWorkout);
-  const evaluateBadges = useAchievementStore((s) => s.evaluateAfterWorkout);
+  const checkAndUnlockBadges = useAchievementStore((s) => s.checkAndUnlockBadges);
   const { play } = useSound(config.soundScheme);
   const startedRef = useRef(false);
   const savedRef = useRef(false);
+  const savedRouteParamsRef = useRef<{ recordId: string; newBadgeIds?: string } | null>(null);
 
   const totalWorkoutSeconds = useMemo(
     () =>
@@ -117,12 +123,35 @@ export default function TimerScreen() {
     }
   };
 
+  const getActivePresetName = useCallback(async () => {
+    if (!activePresetId) return undefined;
+
+    const builtInPreset = getPresetsForMode(config.mode).find(
+      (preset) => preset.id === activePresetId,
+    );
+    if (builtInPreset) {
+      return builtInPreset.name[language] ?? builtInPreset.name.en;
+    }
+
+    try {
+      const raw = await AsyncStorage.getItem(PRESET_STORAGE_KEY);
+      const userPresets: UserPreset[] = raw ? JSON.parse(raw) : [];
+      const activePreset = userPresets.find(
+        (preset) => preset.id === activePresetId && preset.mode === config.mode,
+      );
+      return activePreset?.name?.[language] ?? activePreset?.name?.en;
+    } catch {
+      return undefined;
+    }
+  }, [activePresetId, config.mode, language]);
+
   const saveWorkout = useCallback(
     async (wasCompleted: boolean) => {
-      if (savedRef.current) return;
+      if (savedRef.current) return savedRouteParamsRef.current;
       savedRef.current = true;
       const state = useWorkoutStore.getState().timerState;
       const sessionResult = createSessionResult(state, config.mode, wasCompleted);
+      const presetName = await getActivePresetName();
       setLastResult(sessionResult);
       const record = {
         id: `w_${Date.now()}`,
@@ -133,12 +162,20 @@ export default function TimerScreen() {
         totalDuration: sessionResult.totalDuration,
         wasCompleted: sessionResult.wasCompleted,
         presetId: activePresetId ?? undefined,
+        presetName,
       };
       await addWorkout(record);
-      const stats = useHistoryStore.getState().stats;
-      await evaluateBadges(stats, record);
+      const newBadgeIds = await checkAndUnlockBadges(record);
+      const routeParams = {
+        recordId: record.id,
+        ...(newBadgeIds.length > 0
+          ? { newBadgeIds: JSON.stringify(newBadgeIds) }
+          : {}),
+      };
+      savedRouteParamsRef.current = routeParams;
+      return routeParams;
     },
-    [activePresetId, addWorkout, config, evaluateBadges, setLastResult],
+    [activePresetId, addWorkout, checkAndUnlockBadges, config, getActivePresetName, setLastResult],
   );
 
   const handleStop = () => {
@@ -153,18 +190,24 @@ export default function TimerScreen() {
         text: t('timer.yes'),
         style: 'destructive',
         onPress: async () => {
-          await saveWorkout(false);
+          const routeParams = await saveWorkout(false);
           stop();
-          router.replace('/result' as Href);
+          router.replace({
+            pathname: '/result',
+            params: routeParams ?? undefined,
+          });
         },
       },
     ]);
   };
 
   const handleHome = async () => {
-    await saveWorkout(true);
+    const routeParams = await saveWorkout(true);
     stop();
-    router.replace('/result' as Href);
+    router.replace({
+      pathname: '/result',
+      params: routeParams ?? undefined,
+    });
   };
 
   const progressBarStyle = useAnimatedStyle(() => ({

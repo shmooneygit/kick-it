@@ -1,4 +1,10 @@
 {
+  "custom_preset": "Власні",
+  "sound_scheme": "Звукова схема",
+  "sound_bell": "Дзвінок",
+  "sound_beep": "Біп",
+  "sound_whistle": "Свисток",
+  "new_badge": "Новий бейдж!",
   "greetingMorning": "Доброго ранку, бійцю! 👊",
   "greetingAfternoon": "Добрий день, бійцю! 👊",
   "greetingEvening": "Добрий вечір, бійцю! 👊",

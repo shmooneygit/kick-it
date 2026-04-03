@@ -1,8 +1,10 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, Href } from 'expo-router';
+import { useMemo } from 'react';
+import { useRouter, Href, useLocalSearchParams } from 'expo-router';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useHistoryStore } from '@/store/history-store';
+import { useAchievementStore } from '@/store/achievement-store';
 import { useSettingsStore } from '@/store/settings-store';
 import {
   Colors,
@@ -14,6 +16,7 @@ import {
 import { createSessionResult } from '@/lib/session-result';
 import { t } from '@/lib/i18n';
 import { format, parseISO } from 'date-fns';
+import { BadgeDef, WorkoutConfig, WorkoutRecord } from '@/lib/types';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -21,16 +24,46 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+function formatConfigShorthand(config: WorkoutConfig): string {
+  return `${config.rounds}×${formatTime(config.workDuration)}`;
+}
+
+function getPresetLabel(record?: WorkoutRecord): string {
+  return record?.presetName ?? t('custom_preset');
+}
+
+function badgeText(language: 'uk' | 'en', badge: BadgeDef): string {
+  return language === 'uk' ? badge.name.uk : badge.name.en;
+}
+
 export default function ResultScreen() {
-  useSettingsStore((s) => s.settings.language);
+  const language = useSettingsStore((s) => s.settings.language);
 
   const router = useRouter();
+  const params = useLocalSearchParams<{ recordId?: string; newBadgeIds?: string }>();
   const insets = useSafeAreaInsets();
   const config = useWorkoutStore((s) => s.config);
   const timerState = useWorkoutStore((s) => s.timerState);
   const lastResult = useWorkoutStore((s) => s.lastResult);
   const clearLastResult = useWorkoutStore((s) => s.clearLastResult);
-  const latestWorkout = useHistoryStore((s) => s.history[0]);
+  const history = useHistoryStore((s) => s.history);
+  const getBadgesByIds = useAchievementStore((s) => s.getBadgesByIds);
+
+  const recordId = Array.isArray(params.recordId) ? params.recordId[0] : params.recordId;
+  const newBadgeIdsParam = Array.isArray(params.newBadgeIds) ? params.newBadgeIds[0] : params.newBadgeIds;
+  const workoutRecord = useMemo(
+    () => history.find((item) => item.id === recordId) ?? history[0],
+    [history, recordId],
+  );
+  const earnedBadges = useMemo(() => {
+    if (!newBadgeIdsParam) return [];
+    try {
+      const ids = JSON.parse(newBadgeIdsParam) as string[];
+      return getBadgesByIds(Array.isArray(ids) ? ids : []);
+    } catch {
+      return [];
+    }
+  }, [getBadgesByIds, newBadgeIdsParam]);
 
   const sessionResult =
     lastResult ??
@@ -42,9 +75,10 @@ export default function ResultScreen() {
   const title = sessionResult.wasCompleted
     ? t('result.title')
     : t('result.stoppedTitle');
-  const dateLabel = latestWorkout
-    ? format(parseISO(latestWorkout.date), 'dd.MM.yyyy HH:mm')
+  const dateLabel = workoutRecord
+    ? format(parseISO(workoutRecord.date), 'dd.MM.yyyy HH:mm')
     : format(new Date(), 'dd.MM.yyyy HH:mm');
+  const resultConfig = workoutRecord?.config ?? config;
 
   const handleRepeat = () => {
     clearLastResult();
@@ -68,7 +102,10 @@ export default function ResultScreen() {
         <View style={styles.statsCard}>
           <View style={styles.statsHeader}>
             <Text style={styles.modeIcon}>{modeIcon}</Text>
-            <Text style={styles.modeName}>{isBoxing ? t('home.boxing') : t('home.tabata')}</Text>
+            <View style={styles.modeInfo}>
+              <Text style={styles.modeName}>{getPresetLabel(workoutRecord)}</Text>
+              <Text style={styles.modeMeta}>{formatConfigShorthand(resultConfig)}</Text>
+            </View>
           </View>
 
           <View style={styles.statsGrid}>
@@ -80,7 +117,7 @@ export default function ResultScreen() {
             </View>
             <View style={styles.statCell}>
               <Text style={styles.statLabel}>{t('settings.restDuration')}</Text>
-              <Text style={styles.statValue}>{formatTime(config.restDuration)}</Text>
+              <Text style={styles.statValue}>{formatTime(resultConfig.restDuration)}</Text>
             </View>
             <View style={styles.statCell}>
               <Text style={styles.statLabel}>{t('result.totalTime')}</Text>
@@ -92,10 +129,27 @@ export default function ResultScreen() {
               <Text style={styles.statLabel}>
                 {isBoxing ? t('settings.roundDuration') : t('settings.workDuration')}
               </Text>
-              <Text style={styles.statValue}>{formatTime(config.workDuration)}</Text>
+              <Text style={styles.statValue}>{formatTime(resultConfig.workDuration)}</Text>
             </View>
           </View>
         </View>
+
+        {earnedBadges.length > 0 && (
+          <View style={styles.badgeCard}>
+            {earnedBadges.map((badge, index) => (
+              <View
+                key={badge.id}
+                style={[styles.badgeRow, index < earnedBadges.length - 1 && styles.badgeRowGap]}
+              >
+                <Text style={styles.badgeIcon}>{badge.icon}</Text>
+                <View style={styles.badgeInfo}>
+                  <Text style={styles.badgeLabel}>{t('new_badge')}</Text>
+                  <Text style={styles.badgeName}>{badgeText(language, badge)}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
 
       <View style={styles.buttons}>
@@ -157,6 +211,40 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 20,
   },
+  badgeCard: {
+    width: '100%',
+    backgroundColor: withOpacity(Colors.purple, 0.1),
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: withOpacity(Colors.purple, 0.3),
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  badgeRowGap: {
+    marginBottom: 8,
+  },
+  badgeIcon: {
+    fontSize: 24,
+  },
+  badgeInfo: {
+    flex: 1,
+  },
+  badgeLabel: {
+    fontFamily: FontFamily.body,
+    fontSize: 12,
+    color: Colors.purple,
+    marginBottom: 2,
+  },
+  badgeName: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
   statsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -173,6 +261,15 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bodySemiBold,
     fontSize: 16,
     color: Colors.textPrimary,
+  },
+  modeInfo: {
+    flex: 1,
+  },
+  modeMeta: {
+    fontFamily: FontFamily.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   statsGrid: {
     flexDirection: 'row',

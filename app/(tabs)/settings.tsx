@@ -1,22 +1,38 @@
-import { View, Text, Pressable, Switch, Alert, FlatList, StyleSheet } from 'react-native';
-import { useCallback } from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  Switch,
+  Alert,
+  FlatList,
+  Linking,
+  StyleSheet,
+} from 'react-native';
+import { useCallback, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettingsStore } from '@/store/settings-store';
 import { usePresets } from '@/hooks/use-presets';
 import { SoundScheme } from '@/lib/types';
 import { NumberStepper } from '@/components/number-stepper';
+import { SoundPicker } from '@/components/sound-picker';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
 import i18n, { t } from '@/lib/i18n';
 
-const SOUND_SCHEMES: { key: SoundScheme; labelKey: string }[] = [
-  { key: 'bell', labelKey: 'settings.bell' },
-  { key: 'beep', labelKey: 'settings.beep' },
-  { key: 'whistle', labelKey: 'settings.whistle' },
-];
+function getSoundSchemeLabel(scheme: SoundScheme): string {
+  switch (scheme) {
+    case 'bell':
+      return t('sound_bell');
+    case 'beep':
+      return t('sound_beep');
+    case 'whistle':
+      return t('sound_whistle');
+  }
+}
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { settings, update } = useSettingsStore();
+  const [showSoundPicker, setShowSoundPicker] = useState(false);
   const { userPresets: boxingPresets, deletePreset: deleteBoxing } = usePresets('boxing');
   const { userPresets: tabataPresets, deletePreset: deleteTabata } = usePresets('tabata');
   const allUserPresets = [...boxingPresets, ...tabataPresets];
@@ -60,25 +76,18 @@ export default function SettingsScreen() {
             <Text style={styles.sectionLabel}>{t('settingsScreen.soundVibration')}</Text>
             <View style={styles.card}>
               {/* Sound scheme */}
-              <View style={[styles.row, styles.rowDivider]}>
+              <Pressable
+                style={[styles.toggleRow, styles.rowDivider]}
+                onPress={() => setShowSoundPicker(true)}
+              >
                 <Text style={styles.label}>🔔 {t('settingsScreen.soundScheme')}</Text>
-                <View style={styles.pillRow}>
-                  {SOUND_SCHEMES.map(({ key, labelKey }) => {
-                    const selected = settings.soundScheme === key;
-                    return (
-                      <Pressable
-                        key={key}
-                        style={[styles.pill, selected && styles.pillActive]}
-                        onPress={() => update({ soundScheme: key })}
-                      >
-                        <Text style={[styles.pillText, selected && styles.pillTextActive]}>
-                          {t(labelKey)}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
+                <View style={styles.soundValueRow}>
+                  <Text style={styles.soundValue}>
+                    {getSoundSchemeLabel(settings.soundScheme)}
+                  </Text>
+                  <Text style={styles.soundChevron}>▾</Text>
                 </View>
-              </View>
+              </Pressable>
 
               {/* Announce */}
               <View style={[styles.toggleRow, styles.rowDivider]}>
@@ -172,13 +181,25 @@ export default function SettingsScreen() {
                 <Text style={styles.label}>{t('settingsScreen.version')}</Text>
                 <Text style={styles.aboutValue}>Fight Timer v1.0</Text>
               </View>
-              <View style={styles.toggleRow}>
+              <Pressable
+                style={styles.toggleRow}
+                onPress={() => {
+                  Linking.openURL('mailto:mishamoskalenko@icloud.com').catch(() => {});
+                }}
+              >
                 <Text style={styles.label}>{t('settingsScreen.contactDev')}</Text>
                 <Text style={styles.contactLink}>›</Text>
-              </View>
+              </Pressable>
             </View>
           </View>
         )}
+      />
+
+      <SoundPicker
+        visible={showSoundPicker}
+        currentScheme={settings.soundScheme}
+        onSelect={(scheme) => update({ soundScheme: scheme })}
+        onClose={() => setShowSoundPicker(false)}
       />
     </View>
   );
@@ -218,10 +239,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.surfaceBorder,
     overflow: 'hidden',
   },
-  row: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
   label: {
     fontFamily: FontFamily.body,
     fontSize: 14,
@@ -244,23 +261,19 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
   },
-  pill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.pill,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceLight,
+  soundValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  pillActive: {
-    borderColor: Colors.neonCyan,
-  },
-  pillText: {
+  soundValue: {
     fontFamily: FontFamily.body,
-    fontSize: 12,
-    color: Colors.textMuted,
+    fontSize: 14,
+    color: Colors.neonCyan,
   },
-  pillTextActive: {
+  soundChevron: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 14,
     color: Colors.neonCyan,
   },
   langPill: {
