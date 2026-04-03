@@ -54,6 +54,7 @@ export const BorderRadius = Radius;
 
 export const FontFamily = {
   timer: 'Orbitron_400Regular',
+  timerDisplay: 'BebasNeue_400Regular',
   heading: 'Orbitron_700Bold',
   body: 'Exo2_400Regular',
   bodySemiBold: 'Exo2_600SemiBold',
@@ -67,7 +68,7 @@ export const FontSize = {
   lg: 16,
   xl: 18,
   xxl: 22,
-  timer: 96,
+  timer: 120,
 } as const;
 
 export function getPhaseColor(phase: TimerPhase): string {

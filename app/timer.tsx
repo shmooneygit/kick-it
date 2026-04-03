@@ -39,7 +39,7 @@ export default function TimerScreen() {
   const language = useSettingsStore((s) => s.language);
   const addWorkout = useHistoryStore((s) => s.addWorkout);
   const checkAndUnlockBadges = useAchievementStore((s) => s.checkAndUnlockBadges);
-  const { play } = useSound(config.soundScheme);
+  const { play, startKeepAlive, stopKeepAlive } = useSound(config.soundScheme);
   const startedRef = useRef(false);
   const savedRef = useRef(false);
   const savedRouteParamsRef = useRef<{ recordId: string; newBadgeIds?: string } | null>(null);
@@ -90,8 +90,9 @@ export default function TimerScreen() {
 
   const onFinish = useCallback(() => {
     play('finish');
+    void stopKeepAlive();
     triggerNotification();
-  }, [play]);
+  }, [play, stopKeepAlive]);
 
   const { start, pause, resume, stop, timerState } = useTimer(config, {
     onPhaseChange,
@@ -115,9 +116,16 @@ export default function TimerScreen() {
     if (!startedRef.current) {
       clearLastResult();
       startedRef.current = true;
+      void startKeepAlive();
       start();
     }
-  }, [clearLastResult, start]);
+  }, [clearLastResult, start, startKeepAlive]);
+
+  useEffect(() => {
+    return () => {
+      void stopKeepAlive();
+    };
+  }, [stopKeepAlive]);
 
   const handlePauseResume = () => {
     if (timerState.isPaused) {
@@ -192,12 +200,13 @@ export default function TimerScreen() {
       },
       {
         text: t('timer.yes'),
-        style: 'destructive',
-        onPress: async () => {
-          const routeParams = await saveWorkout(false);
-          stop();
-          router.replace({
-            pathname: '/result',
+          style: 'destructive',
+          onPress: async () => {
+            const routeParams = await saveWorkout(false);
+            await stopKeepAlive();
+            stop();
+            router.replace({
+              pathname: '/result',
             params: routeParams ?? undefined,
           });
         },
@@ -207,6 +216,7 @@ export default function TimerScreen() {
 
   const handleHome = async () => {
     const routeParams = await saveWorkout(true);
+    await stopKeepAlive();
     stop();
     router.replace({
       pathname: '/result',

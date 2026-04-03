@@ -8,6 +8,7 @@ import {
   Orbitron_400Regular,
   Orbitron_700Bold,
 } from '@expo-google-fonts/orbitron';
+import { BebasNeue_400Regular } from '@expo-google-fonts/bebas-neue';
 import {
   Exo2_400Regular,
   Exo2_600SemiBold,
@@ -24,6 +25,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
+    BebasNeue_400Regular,
     Orbitron_400Regular,
     Orbitron_700Bold,
     Exo2_400Regular,

@@ -162,11 +162,13 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   digits: {
-    fontFamily: FontFamily.timer,
+    fontFamily: FontFamily.timerDisplay,
     fontSize: FontSize.timer,
     fontWeight: '400',
-    letterSpacing: 2,
+    letterSpacing: 6,
+    lineHeight: 124,
     fontVariant: ['tabular-nums'],
+    textAlign: 'center',
   },
   elapsed: {
     fontFamily: FontFamily.body,

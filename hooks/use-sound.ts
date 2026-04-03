@@ -11,6 +11,8 @@ import { soundFiles, SoundAsset, SoundEvent } from '@/lib/sounds';
 export function useSound(scheme: SoundScheme) {
   const activeSoundsRef = useRef<Set<Audio.Sound>>(new Set());
   const warningTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const keepAliveSoundRef = useRef<Audio.Sound | null>(null);
+  const keepAliveRequestedRef = useRef(false);
   const mountedRef = useRef(true);
   const audioModePromiseRef = useRef<Promise<void> | null>(null);
 
@@ -24,10 +26,11 @@ export function useSound(scheme: SoundScheme) {
     if (!audioModePromiseRef.current) {
       audioModePromiseRef.current = Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
+        staysActiveInBackground: true,
         shouldDuckAndroid: false,
         interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
         interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+        playThroughEarpieceAndroid: false,
       }).catch((error) => {
         audioModePromiseRef.current = null;
         throw error;
@@ -52,6 +55,50 @@ export function useSound(scheme: SoundScheme) {
     [ensureAudioMode, unloadSound],
   );
 
+  const stopKeepAlive = useCallback(async () => {
+    keepAliveRequestedRef.current = false;
+    const sound = keepAliveSoundRef.current;
+    keepAliveSoundRef.current = null;
+
+    if (!sound) return;
+
+    try {
+      await sound.stopAsync();
+    } catch {}
+
+    try {
+      await sound.unloadAsync();
+    } catch {}
+  }, []);
+
+  const startKeepAlive = useCallback(async () => {
+    keepAliveRequestedRef.current = true;
+
+    if (keepAliveSoundRef.current) return;
+
+    try {
+      await ensureAudioMode();
+
+      const asset = soundFiles[scheme].finish;
+      const { sound } = await Audio.Sound.createAsync(asset, {
+        shouldPlay: true,
+        isLooping: true,
+        isMuted: true,
+        progressUpdateIntervalMillis: 60000,
+      });
+
+      if (!mountedRef.current || !keepAliveRequestedRef.current) {
+        await sound.unloadAsync().catch(() => {});
+        return;
+      }
+
+      keepAliveSoundRef.current = sound;
+    } catch (error) {
+      keepAliveRequestedRef.current = false;
+      console.warn('Keep-alive audio failed:', error);
+    }
+  }, [ensureAudioMode, scheme]);
+
   useEffect(() => {
     mountedRef.current = true;
     void ensureAudioMode();
@@ -59,8 +106,15 @@ export function useSound(scheme: SoundScheme) {
 
     return () => {
       mountedRef.current = false;
+      keepAliveRequestedRef.current = false;
       warningTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
       warningTimeoutsRef.current = [];
+      const keepAliveSound = keepAliveSoundRef.current;
+      keepAliveSoundRef.current = null;
+      if (keepAliveSound) {
+        keepAliveSound.stopAsync().catch(() => {});
+        keepAliveSound.unloadAsync().catch(() => {});
+      }
       activeSoundsRef.current.forEach((sound) => unloadSound(sound));
     };
   }, [ensureAudioMode, scheme, unloadSound]);
@@ -94,5 +148,5 @@ export function useSound(scheme: SoundScheme) {
     [playClip, scheme],
   );
 
-  return { play };
+  return { play, startKeepAlive, stopKeepAlive };
 }
