@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
+import Constants from 'expo-constants';
 import * as SplashScreen from 'expo-splash-screen';
 import {
   useFonts,
@@ -16,6 +17,7 @@ import {
 } from '@expo-google-fonts/exo-2';
 import { Colors } from '@/constants/theme';
 import i18n from '@/lib/i18n';
+import { configureAudioModeOnce } from '@/hooks/use-sound';
 import { useSettingsStore } from '@/store/settings-store';
 import { useHistoryStore } from '@/store/history-store';
 import { useAchievementStore } from '@/store/achievement-store';
@@ -24,8 +26,9 @@ import 'react-native-reanimated';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const [audioReady, setAudioReady] = useState(false);
   const [fontsLoaded] = useFonts({
-    BebasNeue_400Regular,
+    BebasNeue: BebasNeue_400Regular,
     Orbitron_400Regular,
     Orbitron_700Bold,
     Exo2_400Regular,
@@ -42,11 +45,25 @@ export default function RootLayout() {
   const achievementsLoaded = useAchievementStore((s) => s.loaded);
 
   const isReady =
-    fontsLoaded && settingsLoaded && historyLoaded && achievementsLoaded;
+    fontsLoaded && settingsLoaded && historyLoaded && achievementsLoaded && audioReady;
 
   i18n.locale = language;
 
   useEffect(() => {
+    if (__DEV__ && Constants.appOwnership === 'expo') {
+      console.warn(
+        'Background timer audio will not work in Expo Go. Use a development build or production build for background-audio testing.',
+      );
+    }
+
+    configureAudioModeOnce()
+      .catch((error) => {
+        console.warn('Audio mode initialization failed:', error);
+      })
+      .finally(() => {
+        setAudioReady(true);
+      });
+
     loadSettings();
     loadHistory();
     loadAchievements();

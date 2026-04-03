@@ -54,7 +54,7 @@ export const BorderRadius = Radius;
 
 export const FontFamily = {
   timer: 'Orbitron_400Regular',
-  timerDisplay: 'BebasNeue_400Regular',
+  timerDisplay: 'BebasNeue',
   heading: 'Orbitron_700Bold',
   body: 'Exo2_400Regular',
   bodySemiBold: 'Exo2_600SemiBold',

@@ -164,7 +164,6 @@ const styles = StyleSheet.create({
   digits: {
     fontFamily: FontFamily.timerDisplay,
     fontSize: FontSize.timer,
-    fontWeight: '400',
     letterSpacing: 6,
     lineHeight: 124,
     fontVariant: ['tabular-nums'],

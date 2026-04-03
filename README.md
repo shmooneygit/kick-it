@@ -1,6 +1,6 @@
-# Welcome to your Expo app 👋
+# Fight Timer
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Boxing and Tabata timer built with Expo Router.
 
 ## Get started
 
@@ -10,41 +10,45 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
-2. Start the app
+2. Use a development build for background-audio testing
 
    ```bash
-   npx expo start
+   npx expo run:ios
    ```
 
-In the output, you'll find options to open the app in a
+   Or build one with EAS:
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   ```bash
+   eas build --profile development --platform ios
+   ```
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+3. Start the dev server for the development build
 
-## Get a fresh project
+   ```bash
+   npx expo start --dev-client
+   ```
 
-When you're ready, run:
+Background timer audio does not work reliably in Expo Go. Use a development build or production build when testing locked-screen or background round bells.
+
+## Background audio note
+
+The app keeps the audio session alive during workouts with a bundled silent loop at `assets/sounds/silence.wav`.
+
+If you specifically want the keepalive asset as `assets/sounds/silence.mp3`, generate it manually with:
 
 ```bash
-npm run reset-project
+ffmpeg -f lavfi -i anullsrc=r=44100:cl=mono -t 1 -q:a 9 -acodec libmp3lame assets/sounds/silence.mp3
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Then update the keepalive asset reference in `hooks/use-sound.ts` if you want to switch from WAV to MP3.
 
-## Learn more
+## Verification checklist
 
-To learn more about developing your project with Expo, look at the following resources:
+- Start a workout, lock the phone, and wait for a round transition in a development build.
+- Start music in Spotify or Apple Music, then start a workout and confirm bells mix over the music.
+- End the workout and confirm the silent keepalive track stops immediately.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Links
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [Expo development builds](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Expo Router docs](https://docs.expo.dev/router/introduction/)

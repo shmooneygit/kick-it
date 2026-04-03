@@ -1,7 +1,5 @@
-// Sound assets for each scheme.
-// Place actual .mp3 files in assets/sounds/ directory.
-// Files should be short clips (0.5-2 seconds).
-// For now, we use a try/catch approach — if files don't exist, sounds simply won't play.
+// Bundled sound assets for each scheme.
+// Short WAV clips keep playback simple and reliable in Expo AV.
 
 import { SoundScheme } from '@/lib/types';
 

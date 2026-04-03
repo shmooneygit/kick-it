@@ -8,13 +8,33 @@ import { Asset } from 'expo-asset';
 import { SoundScheme } from '@/lib/types';
 import { soundFiles, SoundAsset, SoundEvent } from '@/lib/sounds';
 
+const KEEP_ALIVE_ASSET = require('../assets/sounds/silence.wav') as SoundAsset;
+let audioModePromise: Promise<void> | null = null;
+
+export function configureAudioModeOnce(): Promise<void> {
+  if (!audioModePromise) {
+    audioModePromise = Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+      shouldDuckAndroid: false,
+      interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+      interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+      playThroughEarpieceAndroid: false,
+    }).catch((error) => {
+      audioModePromise = null;
+      throw error;
+    });
+  }
+
+  return audioModePromise;
+}
+
 export function useSound(scheme: SoundScheme) {
   const activeSoundsRef = useRef<Set<Audio.Sound>>(new Set());
   const warningTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const keepAliveSoundRef = useRef<Audio.Sound | null>(null);
   const keepAliveRequestedRef = useRef(false);
   const mountedRef = useRef(true);
-  const audioModePromiseRef = useRef<Promise<void> | null>(null);
 
   const unloadSound = useCallback((sound: Audio.Sound) => {
     activeSoundsRef.current.delete(sound);
@@ -22,27 +42,9 @@ export function useSound(scheme: SoundScheme) {
     sound.unloadAsync().catch(() => {});
   }, []);
 
-  const ensureAudioMode = useCallback(async () => {
-    if (!audioModePromiseRef.current) {
-      audioModePromiseRef.current = Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        shouldDuckAndroid: false,
-        interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
-        interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-        playThroughEarpieceAndroid: false,
-      }).catch((error) => {
-        audioModePromiseRef.current = null;
-        throw error;
-      });
-    }
-
-    await audioModePromiseRef.current;
-  }, []);
-
   const playClip = useCallback(
     async (asset: SoundAsset) => {
-      await ensureAudioMode();
+      await (audioModePromise ?? Promise.resolve());
       const { sound } = await Audio.Sound.createAsync(asset);
       activeSoundsRef.current.add(sound);
       sound.setOnPlaybackStatusUpdate((status) => {
@@ -52,7 +54,7 @@ export function useSound(scheme: SoundScheme) {
       });
       await sound.playAsync();
     },
-    [ensureAudioMode, unloadSound],
+    [unloadSound],
   );
 
   const stopKeepAlive = useCallback(async () => {
@@ -77,13 +79,12 @@ export function useSound(scheme: SoundScheme) {
     if (keepAliveSoundRef.current) return;
 
     try {
-      await ensureAudioMode();
+      await (audioModePromise ?? Promise.resolve());
 
-      const asset = soundFiles[scheme].finish;
-      const { sound } = await Audio.Sound.createAsync(asset, {
+      const { sound } = await Audio.Sound.createAsync(KEEP_ALIVE_ASSET, {
         shouldPlay: true,
         isLooping: true,
-        isMuted: true,
+        volume: 0.01,
         progressUpdateIntervalMillis: 60000,
       });
 
@@ -97,12 +98,11 @@ export function useSound(scheme: SoundScheme) {
       keepAliveRequestedRef.current = false;
       console.warn('Keep-alive audio failed:', error);
     }
-  }, [ensureAudioMode, scheme]);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
-    void ensureAudioMode();
-    void Asset.loadAsync(Object.values(soundFiles[scheme]));
+    void Asset.loadAsync([...Object.values(soundFiles[scheme]), KEEP_ALIVE_ASSET]);
 
     return () => {
       mountedRef.current = false;
@@ -117,7 +117,7 @@ export function useSound(scheme: SoundScheme) {
       }
       activeSoundsRef.current.forEach((sound) => unloadSound(sound));
     };
-  }, [ensureAudioMode, scheme, unloadSound]);
+  }, [scheme, unloadSound]);
 
   const play = useCallback(
     async (type: SoundEvent) => {
