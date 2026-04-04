@@ -1,10 +1,10 @@
 import {
   View,
   Text,
+  ScrollView,
   Pressable,
   Switch,
   Alert,
-  FlatList,
   Linking,
   StyleSheet,
 } from 'react-native';
@@ -63,13 +63,11 @@ export default function SettingsScreen() {
     <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom }]}>
       <Text style={styles.title}>{t('settingsScreen.title')}</Text>
 
-      <FlatList
-        data={[1]}
-        keyExtractor={() => 'settings'}
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
-        renderItem={() => (
-          <View>
+      >
+        <View>
             {/* Sound & Vibration */}
             <Text style={styles.sectionLabel}>{t('settingsScreen.soundVibration')}</Text>
             <View style={styles.card}>
@@ -87,24 +85,13 @@ export default function SettingsScreen() {
                 </View>
               </Pressable>
 
-              {/* Announce */}
-              <View style={[styles.toggleRow, styles.rowDivider]}>
-                <Text style={styles.label}>🔊 {t('settings.announceRounds')}</Text>
-                <Switch
-                  value={settings.announceRounds}
-                  onValueChange={(v) => update({ announceRounds: v })}
-                  trackColor={{ false: Colors.surfaceLight, true: Colors.neonCyan }}
-                  thumbColor={settings.announceRounds ? Colors.textPrimary : Colors.textMuted}
-                />
-              </View>
-
               {/* Vibration */}
               <View style={styles.toggleRow}>
                 <Text style={styles.label}>📳 {t('settingsScreen.vibration')}</Text>
                 <Switch
                   value={settings.vibrationEnabled}
                   onValueChange={(v) => update({ vibrationEnabled: v })}
-                  trackColor={{ false: Colors.surfaceLight, true: Colors.neonCyan }}
+                  trackColor={{ false: Colors.surfaceLight, true: Colors.cyan }}
                   thumbColor={settings.vibrationEnabled ? Colors.textPrimary : Colors.textMuted}
                 />
               </View>
@@ -190,9 +177,8 @@ export default function SettingsScreen() {
                 <Text style={styles.contactLink}>›</Text>
               </Pressable>
             </View>
-          </View>
-        )}
-      />
+        </View>
+      </ScrollView>
 
       <SoundPicker
         visible={showSoundPicker}
@@ -268,12 +254,12 @@ const styles = StyleSheet.create({
   soundValue: {
     fontFamily: FontFamily.body,
     fontSize: 14,
-    color: Colors.neonCyan,
+    color: Colors.cyan,
   },
   soundChevron: {
     fontFamily: FontFamily.bodySemiBold,
     fontSize: 14,
-    color: Colors.neonCyan,
+    color: Colors.cyan,
   },
   langPill: {
     flex: 1,
@@ -283,7 +269,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   langPillActive: {
-    backgroundColor: Colors.neonCyan,
+    backgroundColor: Colors.cyan,
   },
   langText: {
     fontFamily: FontFamily.bodySemiBold,
@@ -330,6 +316,6 @@ const styles = StyleSheet.create({
   contactLink: {
     fontFamily: FontFamily.bodySemiBold,
     fontSize: 16,
-    color: Colors.neonCyan,
+    color: Colors.cyan,
   },
 });

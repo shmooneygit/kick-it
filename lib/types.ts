@@ -8,7 +8,6 @@ export interface WorkoutConfig {
   workDuration: number;
   restDuration: number;
   countdownDuration: number;
-  announceRounds: boolean;
   soundScheme: SoundScheme;
 }
 
@@ -87,8 +86,6 @@ export interface TimerState {
 export interface AppSettings {
   language: 'uk' | 'en';
   soundScheme: SoundScheme;
-  announceRounds: boolean;
   vibrationEnabled: boolean;
   defaultCountdown: number;
-  onboardingComplete: boolean;
 }

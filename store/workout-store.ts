@@ -13,7 +13,6 @@ const DEFAULT_BOXING: WorkoutConfig = {
   workDuration: 180,
   restDuration: 60,
   countdownDuration: 5,
-  announceRounds: true,
   soundScheme: 'bell',
 };
 
@@ -23,7 +22,6 @@ const DEFAULT_TABATA: WorkoutConfig = {
   workDuration: 20,
   restDuration: 10,
   countdownDuration: 5,
-  announceRounds: true,
   soundScheme: 'beep',
 };
 
@@ -63,11 +61,12 @@ function sanitizeRounds(value: number): number {
 
 function sanitizeConfig(config: WorkoutConfig): WorkoutConfig {
   return {
-    ...config,
+    mode: config.mode,
     rounds: sanitizeRounds(config.rounds),
     workDuration: sanitizeDuration(config.workDuration, 15, 900),
     restDuration: sanitizeDuration(config.restDuration, 5, 300),
     countdownDuration: sanitizeDuration(config.countdownDuration, 5, 30),
+    soundScheme: config.soundScheme,
   };
 }
 
@@ -78,7 +77,6 @@ function createConfig(mode: TimerMode): WorkoutConfig {
   return sanitizeConfig({
     ...base,
     countdownDuration: settings.defaultCountdown,
-    announceRounds: settings.announceRounds,
     soundScheme: settings.soundScheme,
   });
 }

@@ -4,7 +4,7 @@ import { UserPreset, Preset, WorkoutConfig, TimerMode } from '@/lib/types';
 import { getPresetsForMode } from '@/lib/presets';
 import i18n from '@/lib/i18n';
 
-const STORAGE_KEY = 'workout_presets_v2';
+export const PRESET_STORAGE_KEY = 'workout_presets_v2';
 
 export function usePresets(mode: TimerMode) {
   const [userPresets, setUserPresets] = useState<UserPreset[]>([]);
@@ -14,7 +14,7 @@ export function usePresets(mode: TimerMode) {
 
   const loadUserPresets = useCallback(async () => {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      const raw = await AsyncStorage.getItem(PRESET_STORAGE_KEY);
       const all: UserPreset[] = raw ? JSON.parse(raw) : [];
       setUserPresets(all.filter((preset) => preset.mode === mode));
     } catch {
@@ -31,7 +31,7 @@ export function usePresets(mode: TimerMode) {
 
   const savePreset = useCallback(
     async (name: string, config: WorkoutConfig) => {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      const raw = await AsyncStorage.getItem(PRESET_STORAGE_KEY);
       const all: UserPreset[] = raw ? JSON.parse(raw) : [];
       const preset: UserPreset = {
         id: `user_${config.mode}_${Date.now()}`,
@@ -42,13 +42,12 @@ export function usePresets(mode: TimerMode) {
         workDuration: config.workDuration,
         restDuration: config.restDuration,
         countdownDuration: config.countdownDuration,
-        announceRounds: config.announceRounds,
         soundScheme: config.soundScheme,
         isBuiltIn: false,
         createdAt: Date.now(),
       };
       all.push(preset);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+      await AsyncStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(all));
       await loadUserPresets();
     },
     [loadUserPresets],
@@ -56,10 +55,10 @@ export function usePresets(mode: TimerMode) {
 
   const deletePreset = useCallback(
     async (id: string) => {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      const raw = await AsyncStorage.getItem(PRESET_STORAGE_KEY);
       const all: UserPreset[] = raw ? JSON.parse(raw) : [];
       const filtered = all.filter((p) => p.id !== id);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      await AsyncStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(filtered));
       await loadUserPresets();
     },
     [loadUserPresets],

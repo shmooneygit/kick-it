@@ -23,11 +23,6 @@ export const Colors = {
   finished: '#00F5FF',
 
   danger: '#FF006E',
-
-  // Aliases used by components
-  neonGreen: '#39FF14',
-  neonCyan: '#00F5FF',
-  neonAmber: '#FFB800',
   background: '#0A0A0F',
   border: '#252540',
   surfaceGlass: 'rgba(26,26,46,0.7)',

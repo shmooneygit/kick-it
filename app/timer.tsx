@@ -12,6 +12,7 @@ import Animated, {
 import { useWorkoutStore } from '@/store/workout-store';
 import { useHistoryStore } from '@/store/history-store';
 import { useAchievementStore } from '@/store/achievement-store';
+import { PRESET_STORAGE_KEY } from '@/hooks/use-presets';
 import { useTimer } from '@/hooks/use-timer';
 import { useSound } from '@/hooks/use-sound';
 import { triggerHaptic, triggerNotification } from '@/lib/haptics';
@@ -26,7 +27,6 @@ import { t } from '@/lib/i18n';
 import { useSettingsStore } from '@/store/settings-store';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const PRESET_STORAGE_KEY = 'workout_presets_v2';
 
 export default function TimerScreen() {
   useKeepAwake();

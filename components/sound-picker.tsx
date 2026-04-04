@@ -3,7 +3,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { SoundScheme } from '@/lib/types';
@@ -54,9 +53,8 @@ export function SoundPicker({
           {SOUND_OPTIONS.map((option, index) => {
             const selected = option.key === currentScheme;
             return (
-              <TouchableOpacity
+              <Pressable
                 key={option.key}
-                activeOpacity={0.85}
                 style={[
                   styles.option,
                   selected ? styles.optionSelected : styles.optionIdle,
@@ -72,7 +70,7 @@ export function SoundPicker({
                 >
                   {option.icon} {t(option.labelKey)}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
@@ -114,7 +112,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   optionSelected: {
-    borderColor: Colors.neonCyan,
+    borderColor: Colors.cyan,
   },
   optionLast: {
     marginBottom: 0,

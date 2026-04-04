@@ -26,12 +26,12 @@ interface NeonButtonProps {
 export function NeonButton({
   title,
   onPress,
-  color = Colors.neonCyan,
+  color = Colors.cyan,
   disabled = false,
   fullWidth = false,
 }: NeonButtonProps) {
   const scale = useSharedValue(1);
-  const isPrimaryGreen = color === Colors.green || color === Colors.neonGreen;
+  const isPrimaryGreen = color === Colors.green;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],

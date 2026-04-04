@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceLight,
   },
   periodPillActive: {
-    backgroundColor: Colors.neonCyan,
+    backgroundColor: Colors.cyan,
   },
   periodText: {
     fontFamily: FontFamily.body,
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   },
   repeatIcon: {
     fontSize: 12,
-    color: Colors.neonCyan,
+    color: Colors.cyan,
   },
   empty: {
     flex: 1,

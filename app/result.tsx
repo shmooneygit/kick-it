@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statValueAccent: {
-    color: Colors.neonCyan,
+    color: Colors.cyan,
   },
   buttons: {
     flexDirection: 'row',
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontFamily: FontFamily.bodySemiBold,
     fontSize: 15,
-    color: Colors.neonCyan,
+    color: Colors.cyan,
   },
   primaryButton: {
     flex: 1,

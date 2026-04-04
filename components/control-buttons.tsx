@@ -67,7 +67,7 @@ export function ControlButtons({
     return (
       <View style={styles.container}>
         <Pressable
-          style={[styles.homeButton, neonGlow(Colors.neonCyan, 12)]}
+          style={[styles.homeButton, neonGlow(Colors.cyan, 12)]}
           onPress={() => {
             triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
             onHome();
@@ -94,7 +94,7 @@ export function ControlButtons({
       <AnimatedPressable
         style={[
           styles.pauseButton,
-          neonGlow(Colors.neonCyan, 15),
+          neonGlow(Colors.cyan, 15),
           pauseGlowStyle,
         ]}
         onPress={handlePausePress}
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 2,
-    borderColor: Colors.neonCyan,
+    borderColor: Colors.cyan,
     backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     borderRadius: 40,
     borderWidth: 2,
-    borderColor: Colors.neonCyan,
+    borderColor: Colors.cyan,
     backgroundColor: Colors.surface,
   },
   homeEmoji: {
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   homeText: {
     fontFamily: FontFamily.bodySemiBold,
     fontSize: FontSize.md,
-    color: Colors.neonCyan,
+    color: Colors.cyan,
   },
   pauseGlyph: {
     flexDirection: 'row',
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 24,
     borderRadius: 4,
-    backgroundColor: Colors.neonCyan,
+    backgroundColor: Colors.cyan,
   },
   playGlyph: {
     width: 0,
@@ -191,6 +191,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 22,
     borderTopColor: 'transparent',
     borderBottomColor: 'transparent',
-    borderLeftColor: Colors.neonCyan,
+    borderLeftColor: Colors.cyan,
   },
 });

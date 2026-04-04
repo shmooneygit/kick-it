@@ -60,7 +60,7 @@ export default function AchievementsScreen() {
         </View>
         <View style={styles.levelBarTrack}>
           <LinearGradient
-            colors={[Colors.neonCyan, Colors.purple]}
+            colors={[Colors.cyan, Colors.purple]}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={[styles.levelBarFill, { width: `${Math.min(progressToNext * 100, 100)}%` }]}
@@ -98,7 +98,7 @@ export default function AchievementsScreen() {
               onPress={() => handleBadgePress(def)}
             >
               <Text style={[styles.badgeIcon, !earned && styles.badgeIconLocked]}>
-                {earned ? def.icon : def.icon}
+                {earned ? def.icon : '🔒'}
               </Text>
               <Text
                 style={[styles.badgeName, !earned && styles.badgeNameLocked]}
@@ -360,6 +360,6 @@ const styles = StyleSheet.create({
   modalProgress: {
     fontFamily: FontFamily.timer,
     fontSize: FontSize.lg,
-    color: Colors.neonAmber,
+    color: Colors.amber,
   },
 });

@@ -29,7 +29,7 @@ interface TimerDisplayProps {
   isPaused: boolean;
 }
 
-function getPhaseLabel(phase: TimerPhase, mode: TimerMode, round: number): string {
+function getPhaseLabel(phase: TimerPhase, mode: TimerMode): string {
   switch (phase) {
     case 'countdown':
       return t('timer.preparation');
@@ -112,7 +112,7 @@ export function TimerDisplay({
     <View style={styles.container}>
       {/* Phase label */}
       <Text style={[styles.phaseLabel, { color: phaseColor }]}>
-        {getPhaseLabel(phase, mode, currentRound)}
+        {getPhaseLabel(phase, mode)}
       </Text>
 
       {/* Progress info */}

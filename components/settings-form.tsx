@@ -3,7 +3,6 @@ import {
   Text,
   ScrollView,
   Pressable,
-  Switch,
   TextInput,
   Alert,
   StyleSheet,
@@ -109,7 +108,6 @@ export function SettingsForm({ mode }: SettingsFormProps) {
         workDuration: preset.workDuration,
         restDuration: preset.restDuration,
         countdownDuration: preset.countdownDuration,
-        announceRounds: preset.announceRounds,
         soundScheme: preset.soundScheme,
       });
       setActivePresetId(preset.id);
@@ -176,7 +174,7 @@ export function SettingsForm({ mode }: SettingsFormProps) {
           <MaterialCommunityIcons
             name="chevron-left"
             size={18}
-            color={Colors.neonCyan}
+            color={Colors.cyan}
           />
         </Pressable>
         <Text style={styles.headerTitle}>
@@ -241,7 +239,7 @@ export function SettingsForm({ mode }: SettingsFormProps) {
               onSubmitEditing={handleSave}
             />
             <Pressable style={styles.saveBtn} onPress={handleSave}>
-              <MaterialCommunityIcons name="check" size={20} color={Colors.neonGreen} />
+              <MaterialCommunityIcons name="check" size={20} color={Colors.green} />
             </Pressable>
             <Pressable
               style={styles.saveBtn}
@@ -334,23 +332,8 @@ export function SettingsForm({ mode }: SettingsFormProps) {
           </View>
         </View>
 
-        {/* Toggles row: announce + sound scheme */}
+        {/* Sound scheme */}
         <View style={styles.togglesRow}>
-          <View style={styles.toggleCard}>
-            <View style={styles.toggleHeader}>
-              <Text style={styles.toggleLabel}>🔊 {t('settings.announceRounds')}</Text>
-              <Switch
-                value={config.announceRounds}
-                onValueChange={(v) => {
-                  setConfig({ announceRounds: v });
-                  setActivePresetId(null);
-                }}
-                trackColor={{ false: Colors.surfaceLight, true: Colors.neonCyan }}
-                thumbColor={config.announceRounds ? Colors.textPrimary : Colors.textMuted}
-                style={styles.switchSmall}
-              />
-            </View>
-          </View>
           <Pressable
             style={styles.soundCard}
             onPress={() => setShowSoundPicker(true)}
@@ -380,7 +363,7 @@ export function SettingsForm({ mode }: SettingsFormProps) {
         <NeonButton
           title={t('settings.start')}
           onPress={handleStart}
-          color={Colors.neonGreen}
+          color={Colors.green}
           fullWidth
         />
       </View>
@@ -442,7 +425,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceLight,
   },
   presetChipActive: {
-    borderColor: Colors.neonCyan,
+    borderColor: Colors.cyan,
   },
   presetIcon: {
     fontSize: 14,
@@ -453,7 +436,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   presetChipTextActive: {
-    color: Colors.neonCyan,
+    color: Colors.cyan,
   },
   presetChipSave: {
     flexDirection: 'row',
@@ -536,15 +519,6 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 14,
   },
-  toggleCard: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
   soundCard: {
     flex: 1,
     backgroundColor: Colors.surface,
@@ -554,18 +528,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  toggleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   toggleLabel: {
     fontFamily: FontFamily.body,
     fontSize: 12,
     color: Colors.textSecondary,
-  },
-  switchSmall: {
-    transform: [{ scale: 0.85 }],
   },
   soundValueRow: {
     flexDirection: 'row',
@@ -576,12 +542,12 @@ const styles = StyleSheet.create({
   soundValue: {
     fontFamily: FontFamily.body,
     fontSize: 14,
-    color: Colors.neonCyan,
+    color: Colors.cyan,
   },
   soundChevron: {
     fontFamily: FontFamily.bodySemiBold,
     fontSize: 14,
-    color: Colors.neonCyan,
+    color: Colors.cyan,
   },
   // Total
   totalRow: {

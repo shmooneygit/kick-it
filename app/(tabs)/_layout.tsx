@@ -23,7 +23,7 @@ export default function TabLayout() {
           paddingTop: 4,
           paddingBottom: 6,
         },
-        tabBarActiveTintColor: Colors.neonCyan,
+        tabBarActiveTintColor: Colors.cyan,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarItemStyle: {
           paddingVertical: 2,

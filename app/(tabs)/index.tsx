@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   repeatBtn: {
     fontFamily: FontFamily.bodySemiBold,
     fontSize: 12,
-    color: Colors.neonCyan,
+    color: Colors.cyan,
   },
   emptyRecent: {
     fontFamily: FontFamily.body,

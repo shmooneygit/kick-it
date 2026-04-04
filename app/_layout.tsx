@@ -16,6 +16,7 @@ import {
   Exo2_700Bold,
 } from '@expo-google-fonts/exo-2';
 import { Colors } from '@/constants/theme';
+import { ErrorBoundary } from '@/components/error-boundary';
 import i18n from '@/lib/i18n';
 import { configureAudioModeOnce } from '@/hooks/use-sound';
 import { useSettingsStore } from '@/store/settings-store';
@@ -83,31 +84,33 @@ export default function RootLayout() {
       style={{ flex: 1, backgroundColor: Colors.background }}
       onLayout={onLayoutRootView}
     >
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: Colors.background },
-          animation: 'slide_from_right',
-        }}
-      >
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="boxing/config" />
-        <Stack.Screen name="tabata/config" />
-        <Stack.Screen
-          name="timer"
-          options={{
-            animation: 'fade',
-            gestureEnabled: false,
+      <ErrorBoundary>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: Colors.background },
+            animation: 'slide_from_right',
           }}
-        />
-        <Stack.Screen
-          name="result"
-          options={{
-            animation: 'slide_from_bottom',
-            gestureEnabled: false,
-          }}
-        />
-      </Stack>
+        >
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="boxing/config" />
+          <Stack.Screen name="tabata/config" />
+          <Stack.Screen
+            name="timer"
+            options={{
+              animation: 'fade',
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="result"
+            options={{
+              animation: 'slide_from_bottom',
+              gestureEnabled: false,
+            }}
+          />
+        </Stack>
+      </ErrorBoundary>
       <StatusBar style="light" />
     </View>
   );

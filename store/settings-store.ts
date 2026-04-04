@@ -13,10 +13,8 @@ function detectLanguage(): 'uk' | 'en' {
 const defaults: AppSettings = {
   language: detectLanguage(),
   soundScheme: 'bell',
-  announceRounds: true,
   vibrationEnabled: true,
   defaultCountdown: 5,
-  onboardingComplete: false,
 };
 
 function clampToStep(value: number, min: number, max: number, step: number): number {
@@ -28,8 +26,9 @@ function clampToStep(value: number, min: number, max: number, step: number): num
 
 function normalizeSettings(settings: AppSettings): AppSettings {
   return {
-    ...settings,
     language: settings.language === 'uk' ? 'uk' : 'en',
+    soundScheme: settings.soundScheme,
+    vibrationEnabled: settings.vibrationEnabled,
     defaultCountdown: clampToStep(settings.defaultCountdown, 5, 30, 5),
   };
 }
@@ -41,7 +40,6 @@ interface SettingsStore {
   load: () => Promise<void>;
   update: (partial: Partial<AppSettings>) => Promise<void>;
   setLanguage: (language: 'uk' | 'en') => Promise<void>;
-  completeOnboarding: () => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
@@ -71,12 +69,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   setLanguage: async (language) => {
     const next = normalizeSettings({ ...get().settings, language });
-    set({ settings: next, language: next.language });
-    await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
-  },
-
-  completeOnboarding: async () => {
-    const next = normalizeSettings({ ...get().settings, onboardingComplete: true });
     set({ settings: next, language: next.language });
     await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
   },
