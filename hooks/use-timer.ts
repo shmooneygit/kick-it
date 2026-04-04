@@ -5,7 +5,7 @@ import { WorkoutConfig, TimerPhase } from '@/lib/types';
 
 interface UseTimerCallbacks {
   onPhaseChange: (phase: TimerPhase, round: number) => void;
-  onTick: (secondsRemaining: number, phase: TimerPhase) => void;
+  onTick: (secondsRemaining: number, phase: TimerPhase, round: number) => void;
   onFinish: () => void;
 }
 
@@ -89,7 +89,7 @@ export function useTimer(config: WorkoutConfig, callbacks: UseTimerCallbacks) {
         secondsRemaining: newSeconds,
         totalElapsedSeconds: newElapsed,
       });
-      callbacksRef.current.onTick(newSeconds, state.phase);
+      callbacksRef.current.onTick(newSeconds, state.phase, state.currentRound);
     }
   }, [getNextPhase, setTimerState]);
 

@@ -5,7 +5,7 @@ import {
   InterruptionModeIOS,
 } from 'expo-av';
 import { Asset } from 'expo-asset';
-import { SoundScheme } from '@/lib/types';
+import { SoundScheme, TimerMode } from '@/lib/types';
 import { soundFiles, SoundAsset, SoundEvent } from '@/lib/sounds';
 
 const KEEP_ALIVE_ASSET = require('../assets/sounds/silence.wav') as SoundAsset;
@@ -31,7 +31,7 @@ export function configureAudioModeOnce(): Promise<void> {
 
 export function useSound(scheme: SoundScheme) {
   const activeSoundsRef = useRef<Set<Audio.Sound>>(new Set());
-  const warningTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const patternTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const keepAliveSoundRef = useRef<Audio.Sound | null>(null);
   const keepAliveRequestedRef = useRef(false);
   const mountedRef = useRef(true);
@@ -107,8 +107,8 @@ export function useSound(scheme: SoundScheme) {
     return () => {
       mountedRef.current = false;
       keepAliveRequestedRef.current = false;
-      warningTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
-      warningTimeoutsRef.current = [];
+      patternTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+      patternTimeoutsRef.current = [];
       const keepAliveSound = keepAliveSoundRef.current;
       keepAliveSoundRef.current = null;
       if (keepAliveSound) {
@@ -119,33 +119,55 @@ export function useSound(scheme: SoundScheme) {
     };
   }, [scheme, unloadSound]);
 
+  const queuePattern = useCallback(
+    async (asset: SoundAsset, repeat: number) => {
+      await playClip(asset);
+
+      for (let index = 1; index < repeat; index += 1) {
+        const timeout = setTimeout(() => {
+          patternTimeoutsRef.current = patternTimeoutsRef.current.filter(
+            (value) => value !== timeout,
+          );
+
+          if (mountedRef.current) {
+            playClip(asset).catch((error) => {
+              console.warn('Sound playback failed:', error);
+            });
+          }
+        }, 150 * index);
+
+        patternTimeoutsRef.current.push(timeout);
+      }
+    },
+    [playClip],
+  );
+
   const play = useCallback(
-    async (type: SoundEvent) => {
+    async (
+      type: SoundEvent,
+      options?: { mode?: TimerMode; isLastInterval?: boolean },
+    ) => {
       const asset = soundFiles[scheme][type];
+      const mode = options?.mode ?? 'boxing';
+      let repeat = 1;
+
+      if (mode === 'tabata') {
+        if (type === 'round') {
+          repeat = options?.isLastInterval ? 3 : 1;
+        } else if (type === 'rest') {
+          repeat = 2;
+        }
+      } else if (type === 'warning') {
+        repeat = 2;
+      }
 
       try {
-        await playClip(asset);
-
-        if (type === 'warning') {
-          const timeout = setTimeout(() => {
-            warningTimeoutsRef.current = warningTimeoutsRef.current.filter(
-              (value) => value !== timeout,
-            );
-
-            if (mountedRef.current) {
-              playClip(asset).catch((error) => {
-                console.warn('Sound playback failed:', error);
-              });
-            }
-          }, 150);
-
-          warningTimeoutsRef.current.push(timeout);
-        }
+        await queuePattern(asset, repeat);
       } catch (error) {
         console.warn('Sound playback failed:', error);
       }
     },
-    [playClip, scheme],
+    [queuePattern, scheme],
   );
 
   return { play, startKeepAlive, stopKeepAlive };

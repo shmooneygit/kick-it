@@ -21,7 +21,7 @@ const DEFAULT_TABATA: WorkoutConfig = {
   rounds: 8,
   workDuration: 20,
   restDuration: 10,
-  countdownDuration: 5,
+  countdownDuration: 10,
   soundScheme: 'beep',
 };
 
@@ -60,11 +60,21 @@ function sanitizeRounds(value: number): number {
 }
 
 function sanitizeConfig(config: WorkoutConfig): WorkoutConfig {
+  const isTabata = config.mode === 'tabata';
+
   return {
     mode: config.mode,
-    rounds: sanitizeRounds(config.rounds),
-    workDuration: sanitizeDuration(config.workDuration, 15, 900),
-    restDuration: sanitizeDuration(config.restDuration, 5, 300),
+    rounds: Math.min(isTabata ? 30 : 50, sanitizeRounds(config.rounds)),
+    workDuration: sanitizeDuration(
+      config.workDuration,
+      isTabata ? 10 : 15,
+      isTabata ? 120 : 900,
+    ),
+    restDuration: sanitizeDuration(
+      config.restDuration,
+      5,
+      isTabata ? 60 : 300,
+    ),
     countdownDuration: sanitizeDuration(config.countdownDuration, 5, 30),
     soundScheme: config.soundScheme,
   };
@@ -76,7 +86,8 @@ function createConfig(mode: TimerMode): WorkoutConfig {
 
   return sanitizeConfig({
     ...base,
-    countdownDuration: settings.defaultCountdown,
+    countdownDuration:
+      mode === 'boxing' ? settings.defaultCountdown : base.countdownDuration,
     soundScheme: settings.soundScheme,
   });
 }

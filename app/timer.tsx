@@ -39,10 +39,13 @@ export default function TimerScreen() {
   const language = useSettingsStore((s) => s.language);
   const addWorkout = useHistoryStore((s) => s.addWorkout);
   const checkAndUnlockBadges = useAchievementStore((s) => s.checkAndUnlockBadges);
-  const { play, startKeepAlive, stopKeepAlive } = useSound(config.soundScheme);
+  const { play, startKeepAlive, stopKeepAlive } = useSound(
+    config.soundScheme,
+  );
   const startedRef = useRef(false);
   const savedRef = useRef(false);
   const savedRouteParamsRef = useRef<{ recordId: string; newBadgeIds?: string } | null>(null);
+  const isTabata = config.mode === 'tabata';
 
   const totalWorkoutSeconds = useMemo(
     () =>
@@ -56,36 +59,44 @@ export default function TimerScreen() {
   const progressColor = useSharedValue<string>(Colors.countdown);
 
   const onPhaseChange = useCallback(
-    (phase: TimerPhase, _round: number) => {
+    (phase: TimerPhase, round: number) => {
       progressColor.value = getPhaseColor(phase);
       switch (phase) {
         case 'countdown':
           triggerHaptic();
           break;
         case 'work':
-          play('round');
+          play('round', {
+            mode: config.mode,
+            isLastInterval: isTabata && round === config.rounds,
+          });
           triggerNotification();
           break;
         case 'rest':
-          play('rest');
+          play('rest', { mode: config.mode });
           triggerNotification(Haptics.NotificationFeedbackType.Warning);
           break;
       }
     },
-    [play, progressColor],
+    [config.mode, config.rounds, isTabata, play, progressColor],
   );
 
   const onTick = useCallback(
-    (secondsRemaining: number, phase: TimerPhase) => {
-      if (phase === 'work' && secondsRemaining === 10) {
+    (secondsRemaining: number, phase: TimerPhase, _round: number) => {
+      if (!isTabata && phase === 'work' && secondsRemaining === 10) {
         play('warning');
       }
 
-      if (secondsRemaining <= 3 && secondsRemaining > 0) {
+      const shouldPlayFinalTick =
+        secondsRemaining <= 3 &&
+        secondsRemaining > 0 &&
+        (!isTabata || phase === 'countdown' || phase === 'work' || phase === 'rest');
+
+      if (shouldPlayFinalTick) {
         play('tick');
       }
     },
-    [play],
+    [isTabata, play],
   );
 
   const onFinish = useCallback(() => {
@@ -229,6 +240,65 @@ export default function TimerScreen() {
     backgroundColor: progressColor.value,
   }));
 
+  const tabataSegments = useMemo(() => {
+    if (!isTabata || timerState.totalRounds <= 0) {
+      return [];
+    }
+
+    const cycleDuration = config.workDuration + config.restDuration;
+
+    return Array.from({ length: timerState.totalRounds }, (_, index) => {
+      const segmentRound = index + 1;
+
+      if (timerState.phase === 'finished') {
+        return 1;
+      }
+
+      if (segmentRound < timerState.currentRound) {
+        return 1;
+      }
+
+      if (segmentRound > timerState.currentRound) {
+        return 0;
+      }
+
+      if (timerState.phase === 'countdown' || cycleDuration <= 0) {
+        return 0;
+      }
+
+      if (timerState.phase === 'work') {
+        return Math.max(
+          0,
+          Math.min(
+            1,
+            (config.workDuration - timerState.secondsRemaining) / cycleDuration,
+          ),
+        );
+      }
+
+      if (timerState.phase === 'rest') {
+        return Math.max(
+          0,
+          Math.min(
+            1,
+            (config.workDuration + (config.restDuration - timerState.secondsRemaining)) /
+              cycleDuration,
+          ),
+        );
+      }
+
+      return 0;
+    });
+  }, [
+    config.restDuration,
+    config.workDuration,
+    isTabata,
+    timerState.currentRound,
+    timerState.phase,
+    timerState.secondsRemaining,
+    timerState.totalRounds,
+  ]);
+
   return (
     <View
       style={[
@@ -236,10 +306,27 @@ export default function TimerScreen() {
         { paddingTop: insets.top, paddingBottom: insets.bottom + 8 },
       ]}
     >
-      {/* Progress bar */}
-      <View style={styles.progressTrack}>
-        <Animated.View style={[styles.progressFill, progressBarStyle]} />
-      </View>
+      {isTabata ? (
+        <View style={styles.segmentedTrack}>
+          {tabataSegments.map((fill, index) => (
+            <View key={index} style={styles.segmentShell}>
+              <View
+                style={[
+                  styles.segmentFill,
+                  {
+                    width: `${fill * 100}%`,
+                    opacity: fill > 0 ? 1 : 0,
+                  },
+                ]}
+              />
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.progressTrack}>
+          <Animated.View style={[styles.progressFill, progressBarStyle]} />
+        </View>
+      )}
 
       {/* Timer display */}
       <TimerDisplay
@@ -280,5 +367,23 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 2,
+  },
+  segmentedTrack: {
+    flexDirection: 'row',
+    gap: 3,
+    width: '100%',
+    height: 6,
+    marginBottom: 30,
+  },
+  segmentShell: {
+    flex: 1,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  segmentFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: Colors.green,
   },
 });

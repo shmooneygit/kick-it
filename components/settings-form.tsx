@@ -65,6 +65,11 @@ export function SettingsForm({ mode }: SettingsFormProps) {
   const [showSoundPicker, setShowSoundPicker] = useState(false);
 
   const isBoxing = mode === 'boxing';
+  const roundsMax = isBoxing ? 50 : 30;
+  const workMin = isBoxing ? 15 : 10;
+  const workMax = isBoxing ? 900 : 120;
+  const workStep = isBoxing ? 15 : 5;
+  const restMax = isBoxing ? 300 : 60;
 
   useFocusEffect(
     useCallback(() => {
@@ -277,7 +282,7 @@ export function SettingsForm({ mode }: SettingsFormProps) {
               label={isBoxing ? t('settings.rounds') : t('settings.intervals')}
               value={config.rounds}
               min={1}
-              max={50}
+              max={roundsMax}
               onChange={(v) => {
                 setConfig({ rounds: v });
                 setActivePresetId(null);
@@ -289,9 +294,9 @@ export function SettingsForm({ mode }: SettingsFormProps) {
             <DurationStepper
               label={isBoxing ? t('settings.roundDuration') : t('settings.workDuration')}
               value={config.workDuration}
-              min={15}
-              max={900}
-              step={5}
+              min={workMin}
+              max={workMax}
+              step={workStep}
               onChange={(v) => {
                 setConfig({ workDuration: v });
                 setActivePresetId(null);
@@ -306,7 +311,7 @@ export function SettingsForm({ mode }: SettingsFormProps) {
               label={t('settings.restDuration')}
               value={config.restDuration}
               min={5}
-              max={300}
+              max={restMax}
               step={5}
               onChange={(v) => {
                 setConfig({ restDuration: v });

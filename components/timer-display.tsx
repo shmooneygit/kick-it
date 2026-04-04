@@ -29,7 +29,15 @@ interface TimerDisplayProps {
   isPaused: boolean;
 }
 
-function getPhaseLabel(phase: TimerPhase, mode: TimerMode): string {
+function getPhaseLabel(
+  phase: TimerPhase,
+  mode: TimerMode,
+  isLastTabataInterval: boolean,
+): string {
+  if (isLastTabataInterval) {
+    return t('timer.last_interval');
+  }
+
   switch (phase) {
     case 'countdown':
       return t('timer.preparation');
@@ -53,7 +61,11 @@ export function TimerDisplay({
 }: TimerDisplayProps) {
   useSettingsStore((s) => s.language);
 
-  const phaseColor = getPhaseColor(phase);
+  const isLastTabataInterval =
+    mode === 'tabata' &&
+    currentRound === totalRounds &&
+    (phase === 'work' || phase === 'rest');
+  const phaseColor = isLastTabataInterval ? Colors.amber : getPhaseColor(phase);
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
@@ -98,7 +110,12 @@ export function TimerDisplay({
   const isBoxing = mode === 'boxing';
   let progressLabel: string | null = null;
 
-  if (phase === 'work') {
+  if (!isBoxing && (phase === 'work' || phase === 'rest')) {
+    progressLabel = t('timer.interval_n_of_total', {
+      current: currentRound,
+      total: totalRounds,
+    });
+  } else if (phase === 'work') {
     progressLabel = isBoxing
       ? `${currentRound} ${t('timer.roundOf')} ${totalRounds}`
       : `${currentRound} ${t('timer.intervalOf')} ${totalRounds}`;
@@ -112,7 +129,7 @@ export function TimerDisplay({
     <View style={styles.container}>
       {/* Phase label */}
       <Text style={[styles.phaseLabel, { color: phaseColor }]}>
-        {getPhaseLabel(phase, mode)}
+        {getPhaseLabel(phase, mode, isLastTabataInterval)}
       </Text>
 
       {/* Progress info */}

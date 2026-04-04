@@ -59,6 +59,7 @@
     "preparation": "ПІДГОТОВКА",
     "round": "РАУНД",
     "work": "РОБОТА",
+    "last_interval": "ОСТАННІЙ",
     "rest": "ВІДПОЧИНОК",
     "finished": "ЗАВЕРШЕНО",
     "pause": "Пауза",
@@ -71,6 +72,7 @@
     "elapsed": "Загалом",
     "roundOf": "з",
     "intervalOf": "з",
+    "interval_n_of_total": "%{current} з %{total}",
     "totalTime": "Загальний час",
     "backHome": "На головну"
   },

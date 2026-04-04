@@ -59,6 +59,7 @@
     "preparation": "GET READY",
     "round": "ROUND",
     "work": "WORK",
+    "last_interval": "LAST",
     "rest": "REST",
     "finished": "FINISHED",
     "pause": "Pause",
@@ -71,6 +72,7 @@
     "elapsed": "Total",
     "roundOf": "of",
     "intervalOf": "of",
+    "interval_n_of_total": "%{current} of %{total}",
     "totalTime": "Total time",
     "backHome": "Back to Home"
   },
