@@ -31,3 +31,9 @@ export const soundFiles: Record<SoundScheme, Record<SoundEvent, SoundAsset>> = {
     finish: require('../assets/sounds/whistle-finish.wav'),
   },
 };
+
+export const boxingSoundOverrides: Partial<Record<SoundEvent, SoundAsset>> = {
+  round: require('../assets/sounds/bell1.wav'),
+  rest: require('../assets/sounds/bell1.wav'),
+  warning: require('../assets/sounds/beep1.wav'),
+};

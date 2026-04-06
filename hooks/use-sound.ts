@@ -6,7 +6,12 @@ import {
 } from 'expo-av';
 import { Asset } from 'expo-asset';
 import { SoundScheme, TimerMode } from '@/lib/types';
-import { soundFiles, SoundAsset, SoundEvent } from '@/lib/sounds';
+import {
+  boxingSoundOverrides,
+  soundFiles,
+  SoundAsset,
+  SoundEvent,
+} from '@/lib/sounds';
 
 const KEEP_ALIVE_ASSET = require('../assets/sounds/silence.wav') as SoundAsset;
 let audioModePromise: Promise<void> | null = null;
@@ -102,7 +107,11 @@ export function useSound(scheme: SoundScheme) {
 
   useEffect(() => {
     mountedRef.current = true;
-    void Asset.loadAsync([...Object.values(soundFiles[scheme]), KEEP_ALIVE_ASSET]);
+    void Asset.loadAsync([
+      ...Object.values(soundFiles[scheme]),
+      ...Object.values(boxingSoundOverrides),
+      KEEP_ALIVE_ASSET,
+    ]);
 
     return () => {
       mountedRef.current = false;
@@ -147,8 +156,11 @@ export function useSound(scheme: SoundScheme) {
       type: SoundEvent,
       options?: { mode?: TimerMode; isLastInterval?: boolean },
     ) => {
-      const asset = soundFiles[scheme][type];
       const mode = options?.mode ?? 'boxing';
+      const asset =
+        mode === 'boxing' && boxingSoundOverrides[type]
+          ? boxingSoundOverrides[type]
+          : soundFiles[scheme][type];
       let repeat = 1;
 
       if (mode === 'tabata') {
