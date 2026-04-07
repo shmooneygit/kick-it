@@ -129,12 +129,16 @@ export function SettingsForm({ mode }: SettingsFormProps) {
   const handleDurationChange = useCallback(
     (minutes: number) => {
       setTargetMinutes(minutes);
+      const targetSeconds = minutes * 60;
       const cycleDuration = config.workDuration + config.restDuration;
-      const newRounds = Math.max(1, Math.round((minutes * 60) / cycleDuration));
+      // Inverse of: total = countdown + rounds * work + (rounds - 1) * rest
+      const newRounds = Math.max(1, Math.round(
+        (targetSeconds - config.countdownDuration + config.restDuration) / cycleDuration,
+      ));
       setConfig({ rounds: newRounds });
       setActivePresetId(null);
     },
-    [config.workDuration, config.restDuration, setActivePresetId, setConfig],
+    [config.workDuration, config.restDuration, config.countdownDuration, setActivePresetId, setConfig],
   );
 
   const handleDeletePreset = useCallback(
@@ -337,21 +341,23 @@ export function SettingsForm({ mode }: SettingsFormProps) {
           </View>
         </View>
 
-        {/* Sound scheme */}
-        <View style={styles.togglesRow}>
-          <Pressable
-            style={styles.soundCard}
-            onPress={() => setShowSoundPicker(true)}
-          >
-            <Text style={styles.toggleLabel}>🔔 {t('settings.soundScheme')}</Text>
-            <View style={styles.soundValueRow}>
-              <Text style={styles.soundValue}>
-                {getSoundSchemeLabel(config.soundScheme)}
-              </Text>
-              <Text style={styles.soundChevron}>▾</Text>
-            </View>
-          </Pressable>
-        </View>
+        {/* Sound scheme — only shown for tabata; boxing always uses bell */}
+        {!isBoxing && (
+          <View style={styles.togglesRow}>
+            <Pressable
+              style={styles.soundCard}
+              onPress={() => setShowSoundPicker(true)}
+            >
+              <Text style={styles.toggleLabel}>🔔 {t('settings.soundScheme')}</Text>
+              <View style={styles.soundValueRow}>
+                <Text style={styles.soundValue}>
+                  {getSoundSchemeLabel(config.soundScheme)}
+                </Text>
+                <Text style={styles.soundChevron}>▾</Text>
+              </View>
+            </Pressable>
+          </View>
+        )}
 
         {/* Total workout info */}
         <View style={styles.totalRow}>
@@ -373,16 +379,18 @@ export function SettingsForm({ mode }: SettingsFormProps) {
         />
       </View>
 
-      <SoundPicker
-        visible={showSoundPicker}
-        currentScheme={config.soundScheme}
-        onSelect={(scheme) => {
-          setConfig({ soundScheme: scheme });
-          setActivePresetId(null);
-          triggerHaptic();
-        }}
-        onClose={() => setShowSoundPicker(false)}
-      />
+      {!isBoxing && (
+        <SoundPicker
+          visible={showSoundPicker}
+          currentScheme={config.soundScheme}
+          onSelect={(scheme) => {
+            setConfig({ soundScheme: scheme });
+            setActivePresetId(null);
+            triggerHaptic();
+          }}
+          onClose={() => setShowSoundPicker(false)}
+        />
+      )}
     </View>
   );
 }

@@ -76,7 +76,8 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
       const history: WorkoutRecord[] = rawH ? JSON.parse(rawH) : [];
       const stats: UserStats = rawS ? JSON.parse(rawS) : { ...emptyStats };
       set({ history, stats, loaded: true });
-    } catch {
+    } catch (error) {
+      console.warn('[history-store] load failed:', error);
       set({ loaded: true });
     }
   },

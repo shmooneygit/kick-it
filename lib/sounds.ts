@@ -1,39 +1,49 @@
-// Bundled sound assets for each scheme.
-// Short WAV clips keep playback simple and reliable in Expo AV.
-
-import { SoundScheme } from '@/lib/types';
+import { SoundScheme, TimerMode } from '@/lib/types';
 
 export type SoundEvent = 'round' | 'rest' | 'tick' | 'warning' | 'finish';
 
 export type SoundAsset = number;
 
-// Each scheme maps to 4 local WAV assets bundled with the app.
-export const soundFiles: Record<SoundScheme, Record<SoundEvent, SoundAsset>> = {
-  bell: {
-    round: require('../assets/sounds/bell-round.wav'),
-    rest: require('../assets/sounds/bell-rest.wav'),
-    tick: require('../assets/sounds/bell-tick.wav'),
-    warning: require('../assets/sounds/bell-tick.wav'),
-    finish: require('../assets/sounds/bell-finish.wav'),
-  },
-  beep: {
-    round: require('../assets/sounds/beep-round.wav'),
-    rest: require('../assets/sounds/beep-rest.wav'),
-    tick: require('../assets/sounds/beep-tick.wav'),
-    warning: require('../assets/sounds/beep-tick.wav'),
-    finish: require('../assets/sounds/beep-finish.wav'),
-  },
-  whistle: {
-    round: require('../assets/sounds/whistle-round.wav'),
-    rest: require('../assets/sounds/whistle-rest.wav'),
-    tick: require('../assets/sounds/whistle-tick.wav'),
-    warning: require('../assets/sounds/whistle-tick.wav'),
-    finish: require('../assets/sounds/whistle-finish.wav'),
-  },
+const BELL = require('../assets/sounds/bell1.wav') as SoundAsset;
+const BEEP = require('../assets/sounds/beep1.wav') as SoundAsset;
+
+const bellAssets: Record<SoundEvent, SoundAsset> = {
+  round: BELL,
+  rest: BELL,
+  warning: BEEP,
+  tick: BEEP,
+  finish: BELL,
 };
 
-export const boxingSoundOverrides: Partial<Record<SoundEvent, SoundAsset>> = {
-  round: require('../assets/sounds/bell1.wav'),
-  rest: require('../assets/sounds/bell1.wav'),
-  warning: require('../assets/sounds/beep1.wav'),
+const beepAssets: Record<SoundEvent, SoundAsset> = {
+  round: BEEP,
+  rest: BEEP,
+  warning: BEEP,
+  tick: BEEP,
+  finish: BEEP,
 };
+
+// Placeholder: no whistle audio file exists yet — reusing beep assets
+const whistleAssets: Record<SoundEvent, SoundAsset> = {
+  round: BEEP,
+  rest: BEEP,
+  warning: BEEP,
+  tick: BEEP,
+  finish: BEEP,
+};
+
+const schemeMap: Record<SoundScheme, Record<SoundEvent, SoundAsset>> = {
+  bell: bellAssets,
+  beep: beepAssets,
+  whistle: whistleAssets,
+};
+
+export const preloadedSoundAssets: SoundAsset[] = [BELL, BEEP];
+
+export function getSoundAsset(
+  _mode: TimerMode,
+  event: SoundEvent,
+  scheme: SoundScheme,
+): SoundAsset {
+  return schemeMap[scheme][event];
+}

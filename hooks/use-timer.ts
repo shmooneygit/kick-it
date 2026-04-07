@@ -137,7 +137,6 @@ export function useTimer(config: WorkoutConfig, callbacks: UseTimerCallbacks) {
           let remaining = state.secondsRemaining - elapsed;
           let currentPhase: TimerPhase = state.phase;
           let currentRound = state.currentRound;
-          let totalElapsed = state.totalElapsedSeconds + elapsed;
 
           // Fast-forward through phases if needed
           while (remaining <= 0 && currentPhase !== 'finished') {
@@ -146,6 +145,18 @@ export function useTimer(config: WorkoutConfig, callbacks: UseTimerCallbacks) {
             currentRound = next.round;
             remaining += next.seconds;
           }
+
+          // Cap totalElapsed at planned workout duration to prevent
+          // inflation when backgrounded longer than remaining workout time
+          const cfg = configRef.current;
+          const plannedDuration =
+            cfg.countdownDuration +
+            cfg.rounds * cfg.workDuration +
+            (cfg.rounds - 1) * cfg.restDuration;
+          const totalElapsed = Math.min(
+            state.totalElapsedSeconds + elapsed,
+            plannedDuration,
+          );
 
           if (currentPhase === 'finished') {
             setTimerState({

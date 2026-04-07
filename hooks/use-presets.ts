@@ -17,7 +17,8 @@ export function usePresets(mode: TimerMode) {
       const raw = await AsyncStorage.getItem(PRESET_STORAGE_KEY);
       const all: UserPreset[] = raw ? JSON.parse(raw) : [];
       setUserPresets(all.filter((preset) => preset.mode === mode));
-    } catch {
+    } catch (error) {
+      console.warn('[use-presets] load failed:', error);
       setUserPresets([]);
     }
     setLoading(false);

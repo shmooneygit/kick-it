@@ -32,7 +32,7 @@ Background timer audio does not work reliably in Expo Go. Use a development buil
 
 ## Background audio note
 
-The app keeps the audio session alive during workouts with a bundled silent loop at `assets/sounds/silence.wav`.
+The app keeps the audio session alive during workouts with a bundled silent loop at `assets/keepalive/silence.wav`.
 
 If you specifically want the keepalive asset as `assets/sounds/silence.mp3`, generate it manually with:
 

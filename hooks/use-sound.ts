@@ -7,13 +7,13 @@ import {
 import { Asset } from 'expo-asset';
 import { SoundScheme, TimerMode } from '@/lib/types';
 import {
-  boxingSoundOverrides,
-  soundFiles,
+  getSoundAsset,
+  preloadedSoundAssets,
   SoundAsset,
   SoundEvent,
 } from '@/lib/sounds';
 
-const KEEP_ALIVE_ASSET = require('../assets/sounds/silence.wav') as SoundAsset;
+const KEEP_ALIVE_ASSET = require('../assets/keepalive/silence.wav') as SoundAsset;
 let audioModePromise: Promise<void> | null = null;
 
 export function configureAudioModeOnce(): Promise<void> {
@@ -35,6 +35,8 @@ export function configureAudioModeOnce(): Promise<void> {
 }
 
 export function useSound(scheme: SoundScheme) {
+  const schemeRef = useRef(scheme);
+  schemeRef.current = scheme;
   const activeSoundsRef = useRef<Set<Audio.Sound>>(new Set());
   const patternTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const keepAliveSoundRef = useRef<Audio.Sound | null>(null);
@@ -107,11 +109,7 @@ export function useSound(scheme: SoundScheme) {
 
   useEffect(() => {
     mountedRef.current = true;
-    void Asset.loadAsync([
-      ...Object.values(soundFiles[scheme]),
-      ...Object.values(boxingSoundOverrides),
-      KEEP_ALIVE_ASSET,
-    ]);
+    void Asset.loadAsync([...preloadedSoundAssets, KEEP_ALIVE_ASSET]);
 
     return () => {
       mountedRef.current = false;
@@ -126,7 +124,7 @@ export function useSound(scheme: SoundScheme) {
       }
       activeSoundsRef.current.forEach((sound) => unloadSound(sound));
     };
-  }, [scheme, unloadSound]);
+  }, [unloadSound]);
 
   const queuePattern = useCallback(
     async (asset: SoundAsset, repeat: number) => {
@@ -157,10 +155,13 @@ export function useSound(scheme: SoundScheme) {
       options?: { mode?: TimerMode; isLastInterval?: boolean },
     ) => {
       const mode = options?.mode ?? 'boxing';
-      const asset =
-        mode === 'boxing' && boxingSoundOverrides[type]
-          ? boxingSoundOverrides[type]
-          : soundFiles[scheme][type];
+      const effectiveScheme = mode === 'boxing' ? 'bell' : schemeRef.current;
+      const asset = getSoundAsset(mode, type, effectiveScheme);
+
+      if (!asset) {
+        return;
+      }
+
       let repeat = 1;
 
       if (mode === 'tabata') {
@@ -179,7 +180,7 @@ export function useSound(scheme: SoundScheme) {
         console.warn('Sound playback failed:', error);
       }
     },
-    [queuePattern, scheme],
+    [queuePattern],
   );
 
   return { play, startKeepAlive, stopKeepAlive };

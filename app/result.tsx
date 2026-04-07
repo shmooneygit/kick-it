@@ -48,7 +48,8 @@ export default function ResultScreen() {
     try {
       const ids = JSON.parse(newBadgeIdsParam) as string[];
       return getBadgesByIds(Array.isArray(ids) ? ids : []);
-    } catch {
+    } catch (error) {
+      console.warn('[result] badge parse failed:', error);
       return [];
     }
   }, [getBadgesByIds, newBadgeIdsParam]);

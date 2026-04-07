@@ -9,15 +9,13 @@ import {
   StyleSheet,
 } from 'react-native';
 import Constants from 'expo-constants';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettingsStore } from '@/store/settings-store';
 import { usePresets } from '@/hooks/use-presets';
 import { NumberStepper } from '@/components/number-stepper';
-import { SoundPicker } from '@/components/sound-picker';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
 import { t } from '@/lib/i18n';
-import { getSoundSchemeLabel } from '@/lib/format';
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -25,7 +23,6 @@ export default function SettingsScreen() {
   const language = useSettingsStore((s) => s.language);
   const update = useSettingsStore((s) => s.update);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
-  const [showSoundPicker, setShowSoundPicker] = useState(false);
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
   const { userPresets: boxingPresets, deletePreset: deleteBoxing } = usePresets('boxing');
   const { userPresets: tabataPresets, deletePreset: deleteTabata } = usePresets('tabata');
@@ -71,20 +68,6 @@ export default function SettingsScreen() {
             {/* Sound & Vibration */}
             <Text style={styles.sectionLabel}>{t('settingsScreen.soundVibration')}</Text>
             <View style={styles.card}>
-              {/* Sound scheme */}
-              <Pressable
-                style={[styles.toggleRow, styles.rowDivider]}
-                onPress={() => setShowSoundPicker(true)}
-              >
-                <Text style={styles.label}>🔔 {t('settingsScreen.soundScheme')}</Text>
-                <View style={styles.soundValueRow}>
-                  <Text style={styles.soundValue}>
-                    {getSoundSchemeLabel(settings.soundScheme)}
-                  </Text>
-                  <Text style={styles.soundChevron}>▾</Text>
-                </View>
-              </Pressable>
-
               {/* Vibration */}
               <View style={styles.toggleRow}>
                 <Text style={styles.label}>📳 {t('settingsScreen.vibration')}</Text>
@@ -170,7 +153,7 @@ export default function SettingsScreen() {
               <Pressable
                 style={styles.toggleRow}
                 onPress={() => {
-                  Linking.openURL('mailto:mishamoskalenko@icloud.com').catch(() => {});
+                  Linking.openURL('mailto:mishamoskalenko@icloud.com').catch((error) => { console.warn('[settings] openURL failed:', error); });
                 }}
               >
                 <Text style={styles.label}>{t('settingsScreen.contactDev')}</Text>
@@ -180,12 +163,6 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      <SoundPicker
-        visible={showSoundPicker}
-        currentScheme={settings.soundScheme}
-        onSelect={(scheme) => update({ soundScheme: scheme })}
-        onClose={() => setShowSoundPicker(false)}
-      />
     </View>
   );
 }
@@ -245,21 +222,6 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
-  },
-  soundValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  soundValue: {
-    fontFamily: FontFamily.body,
-    fontSize: 14,
-    color: Colors.cyan,
-  },
-  soundChevron: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 14,
-    color: Colors.cyan,
   },
   langPill: {
     flex: 1,
