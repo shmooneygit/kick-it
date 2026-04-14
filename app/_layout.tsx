@@ -22,6 +22,7 @@ import { configureAudioModeOnce } from '@/hooks/use-sound';
 import { useSettingsStore } from '@/store/settings-store';
 import { useHistoryStore } from '@/store/history-store';
 import { useAchievementStore } from '@/store/achievement-store';
+import { useWorkoutStore } from '@/store/workout-store';
 import 'react-native-reanimated';
 
 SplashScreen.preventAutoHideAsync();
@@ -68,6 +69,7 @@ export default function RootLayout() {
     loadSettings();
     loadHistory();
     loadAchievements();
+    void useWorkoutStore.getState().loadLastConfigs();
   }, [loadSettings, loadHistory, loadAchievements]);
 
   const onLayoutRootView = useCallback(async () => {

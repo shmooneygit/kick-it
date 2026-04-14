@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSettingsStore } from '@/store/settings-store';
 import {
   WorkoutConfig,
@@ -6,6 +7,8 @@ import {
   TimerMode,
   SessionResult,
 } from '@/lib/types';
+
+const LAST_CONFIGS_KEY = 'workout_last_configs';
 
 const DEFAULT_BOXING: WorkoutConfig = {
   mode: 'boxing',
@@ -45,6 +48,12 @@ interface WorkoutStore {
   lastResult: SessionResult | null;
   setLastResult: (result: SessionResult) => void;
   clearLastResult: () => void;
+
+  lastBoxingConfig: WorkoutConfig | null;
+  lastTabataConfig: WorkoutConfig | null;
+  rememberLastConfig: (config: WorkoutConfig) => void;
+  getLastConfigForMode: (mode: TimerMode) => WorkoutConfig;
+  loadLastConfigs: () => Promise<void>;
 
   timerState: TimerState;
   setTimerState: (state: Partial<TimerState>) => void;
@@ -92,7 +101,21 @@ function createConfig(mode: TimerMode): WorkoutConfig {
   });
 }
 
-export const useWorkoutStore = create<WorkoutStore>((set) => ({
+async function persistLastConfigs(
+  lastBoxingConfig: WorkoutConfig | null,
+  lastTabataConfig: WorkoutConfig | null,
+): Promise<void> {
+  try {
+    await AsyncStorage.setItem(
+      LAST_CONFIGS_KEY,
+      JSON.stringify({ lastBoxingConfig, lastTabataConfig }),
+    );
+  } catch {
+    // ignore
+  }
+}
+
+export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
   config: createConfig('boxing'),
   setConfig: (partial) =>
     set((s) => ({ config: sanitizeConfig({ ...s.config, ...partial }) })),
@@ -108,6 +131,49 @@ export const useWorkoutStore = create<WorkoutStore>((set) => ({
   lastResult: null,
   setLastResult: (result) => set({ lastResult: result }),
   clearLastResult: () => set({ lastResult: null }),
+
+  lastBoxingConfig: null,
+  lastTabataConfig: null,
+  rememberLastConfig: (config) => {
+    const sanitized = sanitizeConfig(config);
+    const next =
+      sanitized.mode === 'boxing'
+        ? { lastBoxingConfig: sanitized }
+        : { lastTabataConfig: sanitized };
+    set(next);
+    const state = get();
+    void persistLastConfigs(
+      sanitized.mode === 'boxing' ? sanitized : state.lastBoxingConfig,
+      sanitized.mode === 'tabata' ? sanitized : state.lastTabataConfig,
+    );
+  },
+  getLastConfigForMode: (mode) => {
+    const state = get();
+    const stored =
+      mode === 'boxing' ? state.lastBoxingConfig : state.lastTabataConfig;
+    if (stored) return sanitizeConfig({ ...stored, mode });
+    return createConfig(mode);
+  },
+  loadLastConfigs: async () => {
+    try {
+      const raw = await AsyncStorage.getItem(LAST_CONFIGS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        lastBoxingConfig?: WorkoutConfig | null;
+        lastTabataConfig?: WorkoutConfig | null;
+      };
+      set({
+        lastBoxingConfig: parsed.lastBoxingConfig
+          ? sanitizeConfig({ ...parsed.lastBoxingConfig, mode: 'boxing' })
+          : null,
+        lastTabataConfig: parsed.lastTabataConfig
+          ? sanitizeConfig({ ...parsed.lastTabataConfig, mode: 'tabata' })
+          : null,
+      });
+    } catch {
+      // ignore
+    }
+  },
 
   timerState: initialTimerState,
   setTimerState: (partial) =>

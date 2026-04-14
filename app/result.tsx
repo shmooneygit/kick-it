@@ -31,6 +31,7 @@ export default function ResultScreen() {
   const insets = useSafeAreaInsets();
   const config = useWorkoutStore((s) => s.config);
   const loadConfig = useWorkoutStore((s) => s.loadConfig);
+  const rememberLastConfig = useWorkoutStore((s) => s.rememberLastConfig);
   const timerState = useWorkoutStore((s) => s.timerState);
   const lastResult = useWorkoutStore((s) => s.lastResult);
   const clearLastResult = useWorkoutStore((s) => s.clearLastResult);
@@ -77,7 +78,9 @@ export default function ResultScreen() {
   const resultConfig = workoutRecord?.config ?? config;
 
   const handleRepeat = () => {
-    loadConfig(workoutRecord?.config ?? config, workoutRecord?.presetId ?? null);
+    const repeatConfig = workoutRecord?.config ?? config;
+    loadConfig(repeatConfig, workoutRecord?.presetId ?? null);
+    rememberLastConfig(repeatConfig);
     clearLastResult();
     router.replace('/timer' as Href);
   };

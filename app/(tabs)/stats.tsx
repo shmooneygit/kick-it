@@ -36,6 +36,7 @@ export default function StatsScreen() {
   const router = useRouter();
   const history = useHistoryStore((s) => s.history);
   const loadConfig = useWorkoutStore((s) => s.loadConfig);
+  const rememberLastConfig = useWorkoutStore((s) => s.rememberLastConfig);
   const [period, setPeriod] = useState<Period>('all');
 
   const filtered = useMemo(() => {
@@ -77,9 +78,10 @@ export default function StatsScreen() {
   const handleRepeat = useCallback(
     (record: WorkoutRecord) => {
       loadConfig(record.config, record.presetId ?? null);
+      rememberLastConfig(record.config);
       router.push('/timer' as Href);
     },
-    [loadConfig, router],
+    [loadConfig, rememberLastConfig, router],
   );
 
   const renderWorkout = useCallback(

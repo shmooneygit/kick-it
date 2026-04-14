@@ -172,6 +172,7 @@ export function SettingsForm({ mode }: SettingsFormProps) {
 
   const handleStart = () => {
     triggerNotification();
+    useWorkoutStore.getState().rememberLastConfig(config);
     router.push('/timer' as Href);
   };
 
