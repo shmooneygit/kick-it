@@ -9,15 +9,30 @@ import { NumberStepper } from '@/components/number-stepper';
 import { DurationStepper } from '@/components/duration-stepper';
 import { TimerMode, WorkoutConfig, WorkoutRecord } from '@/lib/types';
 import { formatConfigShorthand, formatTime, getPresetLabel } from '@/lib/format';
-import { Colors, FontFamily, Spacing, BorderRadius } from '@/constants/theme';
+import { Colors, FontFamily } from '@/constants/theme';
 import { triggerHaptic, triggerNotification } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
 
-function getTimeGreeting(): string {
+function getGreetingLabel(language: 'uk' | 'en'): string {
   const h = new Date().getHours();
-  if (h < 12) return t('greetingMorning');
-  if (h < 18) return t('greetingAfternoon');
-  return t('greetingEvening');
+
+  if (language === 'uk') {
+    if (h < 12) return 'Доброго ранку';
+    if (h < 18) return 'Добрий день';
+    return 'Добрий вечір';
+  }
+
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function getClockLabel(language: 'uk' | 'en'): string {
+  const locale = language === 'uk' ? 'uk-UA' : 'en-US';
+  return new Date().toLocaleTimeString(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function computeTotal(config: WorkoutConfig): number {
@@ -28,8 +43,23 @@ function computeTotal(config: WorkoutConfig): number {
   );
 }
 
+interface ConfigRowProps {
+  label: string;
+  children: React.ReactNode;
+  isLast?: boolean;
+}
+
+function ConfigRow({ label, children, isLast = false }: ConfigRowProps) {
+  return (
+    <View style={[styles.configRow, !isLast && styles.configRowDivider]}>
+      <Text style={styles.configRowLabel}>{label.toUpperCase()}</Text>
+      <View style={styles.configRowControl}>{children}</View>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
-  useSettingsStore((s) => s.language);
+  const language = useSettingsStore((s) => s.language);
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -96,19 +126,24 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 }]}>
-      <View style={styles.header}>
-        <Text style={styles.greeting}>{getTimeGreeting()}</Text>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 },
+      ]}
+    >
+      <View style={styles.headerRow}>
+        <Text style={styles.greeting}>{getGreetingLabel(language)}</Text>
+        <Text style={styles.clock}>{getClockLabel(language)}</Text>
       </View>
 
-      {/* Mode switcher */}
       <View style={styles.modeRow}>
         <Pressable
           style={[styles.modePill, isBoxing && styles.modePillActive]}
           onPress={() => handleModeSwitch('boxing')}
         >
           <Text style={[styles.modePillText, isBoxing && styles.modePillTextActive]}>
-            🥊 {t('home.boxing')}
+            {t('home.boxing').toUpperCase()}
           </Text>
         </Pressable>
         <Pressable
@@ -116,98 +151,97 @@ export default function HomeScreen() {
           onPress={() => handleModeSwitch('tabata')}
         >
           <Text style={[styles.modePillText, !isBoxing && styles.modePillTextActive]}>
-            ⏱️ {t('home.tabata')}
+            {t('home.tabata').toUpperCase()}
           </Text>
         </Pressable>
       </View>
 
-      {/* Inline config card */}
       <View style={styles.configCard}>
         <Pressable style={styles.gearBtn} onPress={handleAdvanced} hitSlop={10}>
-          <Text style={styles.gearIcon}>⚙️</Text>
+          <Text style={styles.gearIcon}>⚙</Text>
         </Pressable>
 
-        <View style={styles.grid}>
-          <View style={styles.gridCell}>
-            <NumberStepper
-              label={isBoxing ? t('settings.rounds') : t('settings.intervals')}
-              value={localConfig.rounds}
-              min={1}
-              max={roundsMax}
-              onChange={(v) => updateField({ rounds: v })}
-              compact
-            />
-          </View>
-          <View style={styles.gridCell}>
-            <DurationStepper
-              label={isBoxing ? t('settings.roundDuration') : t('settings.workDuration')}
-              value={localConfig.workDuration}
-              min={workMin}
-              max={workMax}
-              step={workStep}
-              onChange={(v) => updateField({ workDuration: v })}
-              compact
-            />
-          </View>
-          <View style={styles.gridCell}>
-            <DurationStepper
-              label={t('settings.restDuration')}
-              value={localConfig.restDuration}
-              min={5}
-              max={restMax}
-              step={5}
-              onChange={(v) => updateField({ restDuration: v })}
-              compact
-            />
-          </View>
-          <View style={styles.gridCell}>
-            <NumberStepper
-              label={t('settings.countdown')}
-              value={localConfig.countdownDuration}
-              min={5}
-              max={30}
-              step={5}
-              onChange={(v) => updateField({ countdownDuration: v })}
-              formatValue={(v) => `${v}${t('settings.countdownUnit')}`}
-              compact
-            />
-          </View>
-        </View>
+        <ConfigRow label={isBoxing ? t('settings.rounds') : t('settings.intervals')}>
+          <NumberStepper
+            label=""
+            value={localConfig.rounds}
+            min={1}
+            max={roundsMax}
+            onChange={(v) => updateField({ rounds: v })}
+            compact
+          />
+        </ConfigRow>
+
+        <ConfigRow label={isBoxing ? t('settings.roundDuration') : t('settings.workDuration')}>
+          <DurationStepper
+            label=""
+            value={localConfig.workDuration}
+            min={workMin}
+            max={workMax}
+            step={workStep}
+            onChange={(v) => updateField({ workDuration: v })}
+            compact
+          />
+        </ConfigRow>
+
+        <ConfigRow label={t('settings.restDuration')}>
+          <DurationStepper
+            label=""
+            value={localConfig.restDuration}
+            min={5}
+            max={restMax}
+            step={5}
+            onChange={(v) => updateField({ restDuration: v })}
+            compact
+          />
+        </ConfigRow>
+
+        <ConfigRow label={t('settings.countdown')} isLast>
+          <NumberStepper
+            label=""
+            value={localConfig.countdownDuration}
+            min={5}
+            max={30}
+            step={5}
+            onChange={(v) => updateField({ countdownDuration: v })}
+            formatValue={(v) => `${v}${t('settings.countdownUnit')}`}
+            compact
+          />
+        </ConfigRow>
 
         <Text style={styles.totalLine}>
-          {t('settings.totalWorkout')}: {formatTime(totalSeconds)}
+          <Text style={styles.totalLineLabel}>{t('settings.totalWorkout')}: </Text>
+          <Text style={styles.totalLineValue}>{formatTime(totalSeconds)}</Text>
         </Text>
       </View>
 
-      {/* Spacer pushes start button down */}
       <View style={styles.flexSpacer} />
 
-      {/* START button */}
-      <Pressable style={styles.startBtn} onPress={handleStart}>
-        <Text style={styles.startBtnText}>{t('settings.start')}</Text>
-      </Pressable>
-
-      {/* Recent workouts */}
       <View style={styles.recentSection}>
-        <Text style={styles.recentLabel}>{t('home.recent')}</Text>
+        <Text style={styles.recentLabel}>{t('home.recent').toUpperCase()}</Text>
         {recentWorkouts.length > 0 ? (
-          recentWorkouts.map((w) => (
-            <Pressable key={w.id} style={styles.recentCard} onPress={() => handleRepeat(w)}>
-              <Text style={styles.recentIcon}>{w.mode === 'boxing' ? '🥊' : '⏱️'}</Text>
+          recentWorkouts.map((workout) => (
+            <Pressable
+              key={workout.id}
+              style={styles.recentCard}
+              onPress={() => handleRepeat(workout)}
+            >
               <View style={styles.recentInfo}>
-                <Text style={styles.recentTitle}>{getPresetLabel(w)}</Text>
-                <Text style={styles.recentMeta}>{formatConfigShorthand(w)}</Text>
+                <Text style={styles.recentTitle}>{getPresetLabel(workout)}</Text>
+                <Text style={styles.recentMeta}>{formatConfigShorthand(workout)}</Text>
               </View>
-              <Text style={styles.recentDuration}>{formatTime(w.totalDuration)}</Text>
-              <View style={styles.repeatPill}>
-                <Text style={styles.repeatBtn}>▶</Text>
-              </View>
+              <Text style={styles.recentDuration}>{formatTime(workout.totalDuration)}</Text>
+              <Text style={styles.repeatBtn}>▶</Text>
             </Pressable>
           ))
         ) : (
           <Text style={styles.emptyRecent}>{t('home.recentEmpty')}</Text>
         )}
       </View>
+
+      <Pressable style={styles.startBtn} onPress={handleStart}>
+        <Text style={styles.startBtnText}>{t('settings.start').toUpperCase()}</Text>
+      </Pressable>
     </View>
   );
 }
@@ -216,133 +250,126 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: 14,
   },
-  header: {
-    alignItems: 'flex-start',
-    marginBottom: 12,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
   },
   greeting: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 16,
+    fontSize: 15,
     color: Colors.textPrimary,
+  },
+  clock: {
+    fontFamily: FontFamily.body,
+    fontSize: 11,
+    color: Colors.textMeta,
   },
   modeRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.green,
+    marginBottom: 14,
   },
   modePill: {
     flex: 1,
-    height: 44,
-    borderRadius: BorderRadius.pill,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.background,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modePillActive: {
-    backgroundColor: Colors.cyan,
+    backgroundColor: Colors.green,
   },
   modePillText: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 14,
-    color: Colors.textSecondary,
-    letterSpacing: 1,
+    fontSize: 12,
+    color: Colors.green,
+    letterSpacing: 2,
   },
   modePillTextActive: {
-    color: '#0A0A0F',
+    color: Colors.background,
     fontFamily: FontFamily.bodyBold,
   },
   configCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 16,
     borderWidth: 1,
     borderColor: Colors.border,
+    padding: 14,
   },
   gearBtn: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
+    top: 10,
+    right: 10,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
   },
   gearIcon: {
-    fontSize: 16,
+    fontSize: 14,
+    color: Colors.textMuted,
   },
-  grid: {
+  configRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 4,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingRight: 24,
+    gap: 8,
   },
-  gridCell: {
+  configRowDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.hairline,
+  },
+  configRowLabel: {
     flex: 1,
-    minWidth: '45%',
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 8,
+    fontFamily: FontFamily.body,
+    fontSize: 11,
+    color: Colors.textSecondary,
+    letterSpacing: 1,
+  },
+  configRowControl: {
+    alignItems: 'flex-end',
   },
   totalLine: {
-    marginTop: 12,
+    marginTop: 10,
     textAlign: 'center',
     fontFamily: FontFamily.body,
-    fontSize: 13,
+    fontSize: 11,
+  },
+  totalLineLabel: {
+    color: Colors.textMeta,
+  },
+  totalLineValue: {
     color: Colors.textSecondary,
   },
   flexSpacer: {
     flex: 1,
     minHeight: 16,
   },
-  startBtn: {
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: Colors.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.green,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 10,
-    marginBottom: 14,
-  },
-  startBtnText: {
-    fontFamily: FontFamily.bodyBold,
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#0A0A0F',
-    letterSpacing: 3,
-  },
   recentSection: {
-    paddingTop: 4,
-    paddingBottom: 6,
+    marginBottom: 14,
   },
   recentLabel: {
     fontFamily: FontFamily.body,
-    fontSize: 12,
-    color: Colors.textMuted,
+    fontSize: 10,
+    color: Colors.textMeta,
     marginBottom: 8,
-    textTransform: 'uppercase',
     letterSpacing: 1,
   },
   recentCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: Colors.hairline,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
     marginBottom: 6,
-    gap: 10,
-  },
-  recentIcon: {
-    fontSize: 16,
+    gap: 8,
   },
   recentInfo: {
     flex: 1,
@@ -354,30 +381,37 @@ const styles = StyleSheet.create({
   },
   recentMeta: {
     fontFamily: FontFamily.body,
-    fontSize: 12,
-    color: Colors.textMuted,
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
   recentDuration: {
     fontFamily: FontFamily.body,
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  repeatPill: {
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    fontSize: 10,
+    color: Colors.textMuted,
   },
   repeatBtn: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 12,
-    color: Colors.cyan,
+    fontSize: 10,
+    color: Colors.green,
   },
   emptyRecent: {
     fontFamily: FontFamily.body,
     fontSize: 13,
     color: Colors.textMuted,
+    paddingVertical: 10,
     textAlign: 'center',
-    paddingVertical: 12,
+  },
+  startBtn: {
+    backgroundColor: Colors.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+  },
+  startBtnText: {
+    fontFamily: FontFamily.heading,
+    fontSize: 18,
+    color: Colors.background,
+    letterSpacing: 5,
   },
 });

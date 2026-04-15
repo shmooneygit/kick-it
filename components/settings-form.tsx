@@ -10,7 +10,6 @@ import {
 import { useState, useMemo, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, Href, useFocusEffect } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { triggerHaptic, triggerNotification } from '@/lib/haptics';
@@ -21,7 +20,6 @@ import {
   Colors,
   FontFamily,
   FontSize,
-  BorderRadius,
   Spacing,
 } from '@/constants/theme';
 import { getSoundSchemeLabel } from '@/lib/format';
@@ -97,7 +95,6 @@ export function SettingsForm({ mode }: SettingsFormProps) {
     }, [loadConfig, mode, resetConfig]),
   );
 
-  // Calculate total workout time
   const totalSeconds = useMemo(() => {
     return (
       config.countdownDuration +
@@ -117,10 +114,8 @@ export function SettingsForm({ mode }: SettingsFormProps) {
       });
       setActivePresetId(preset.id);
       setShowDuration(true);
-      // Calculate nearest duration option
       const totalSec = preset.rounds * (preset.workDuration + preset.restDuration);
-      const nearestMin = Math.round(totalSec / 60);
-      setTargetMinutes(nearestMin);
+      setTargetMinutes(Math.round(totalSec / 60));
       triggerHaptic();
     },
     [setActivePresetId, setConfig],
@@ -131,14 +126,22 @@ export function SettingsForm({ mode }: SettingsFormProps) {
       setTargetMinutes(minutes);
       const targetSeconds = minutes * 60;
       const cycleDuration = config.workDuration + config.restDuration;
-      // Inverse of: total = countdown + rounds * work + (rounds - 1) * rest
-      const newRounds = Math.max(1, Math.round(
-        (targetSeconds - config.countdownDuration + config.restDuration) / cycleDuration,
-      ));
+      const newRounds = Math.max(
+        1,
+        Math.round(
+          (targetSeconds - config.countdownDuration + config.restDuration) / cycleDuration,
+        ),
+      );
       setConfig({ rounds: newRounds });
       setActivePresetId(null);
     },
-    [config.workDuration, config.restDuration, config.countdownDuration, setActivePresetId, setConfig],
+    [
+      config.workDuration,
+      config.restDuration,
+      config.countdownDuration,
+      setActivePresetId,
+      setConfig,
+    ],
   );
 
   const handleDeletePreset = useCallback(
@@ -177,25 +180,18 @@ export function SettingsForm({ mode }: SettingsFormProps) {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header - compact */}
+    <View style={[styles.container, { paddingTop: insets.top + 6 }]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <MaterialCommunityIcons
-            name="chevron-left"
-            size={18}
-            color={Colors.cyan}
-          />
+          <Text style={styles.backArrow}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle}>
           {isBoxing ? t('home.boxingTimer').toUpperCase() : t('home.tabataTimer').toUpperCase()}
         </Text>
-        <View style={{ width: 28 }} />
+        <View style={styles.headerSpacer} />
       </View>
 
-      {/* Content area - fills between header and start button */}
       <View style={styles.content}>
-        {/* Preset chips - horizontal scroll */}
         <View>
           <ScrollView
             horizontal
@@ -213,12 +209,8 @@ export function SettingsForm({ mode }: SettingsFormProps) {
                     if (!preset.isBuiltIn) handleDeletePreset(preset);
                   }}
                 >
-                  <Text style={styles.presetIcon}>{preset.icon}</Text>
                   <Text
-                    style={[
-                      styles.presetChipText,
-                      active && styles.presetChipTextActive,
-                    ]}
+                    style={[styles.presetChipText, active && styles.presetChipTextActive]}
                     numberOfLines={1}
                   >
                     {getPresetName(preset)}
@@ -226,45 +218,40 @@ export function SettingsForm({ mode }: SettingsFormProps) {
                 </Pressable>
               );
             })}
-            {/* Save chip */}
-            <Pressable
-              style={styles.presetChipSave}
-              onPress={() => setShowSaveInput(true)}
-            >
-              <Text style={styles.presetChipText}>+ {t('settings.savePreset')}</Text>
+            <Pressable style={styles.presetChipSave} onPress={() => setShowSaveInput(true)}>
+              <Text style={styles.presetChipSaveText}>+ {t('settings.savePreset')}</Text>
             </Pressable>
           </ScrollView>
-        </View>
 
-        {/* Save input row */}
-        {showSaveInput && (
-          <View style={styles.saveRow}>
-            <TextInput
-              style={styles.saveInput}
-              value={saveInputName}
-              onChangeText={setSaveInputName}
-              placeholder={t('settings.presetName')}
-              placeholderTextColor={Colors.textMuted}
-              autoFocus
-              onSubmitEditing={handleSave}
-            />
-            <Pressable style={styles.saveBtn} onPress={handleSave}>
-              <MaterialCommunityIcons name="check" size={20} color={Colors.green} />
-            </Pressable>
-            <Pressable
-              style={styles.saveBtn}
-              onPress={() => { setShowSaveInput(false); setSaveInputName(''); }}
-            >
-              <MaterialCommunityIcons name="close" size={20} color={Colors.textMuted} />
-            </Pressable>
-          </View>
-        )}
+          {showSaveInput && (
+            <View style={styles.saveRow}>
+              <TextInput
+                style={styles.saveInput}
+                value={saveInputName}
+                onChangeText={setSaveInputName}
+                placeholder={t('settings.presetName')}
+                placeholderTextColor={Colors.textMuted}
+                autoFocus
+                onSubmitEditing={handleSave}
+              />
+              <Pressable style={styles.saveBtn} onPress={handleSave}>
+                <Text style={styles.saveBtnText}>✓</Text>
+              </Pressable>
+              <Pressable
+                style={styles.saveBtn}
+                onPress={() => {
+                  setShowSaveInput(false);
+                  setSaveInputName('');
+                }}
+              >
+                <Text style={styles.saveBtnText}>✕</Text>
+              </Pressable>
+            </View>
+          )}
 
-        {/* Duration override (shown after loading a preset) */}
-        {showDuration && targetMinutes !== null && (
-          <View style={styles.durationRow}>
-            <Text style={styles.durationLabel}>{t('settings.workoutDuration')}</Text>
-            <View style={styles.durationStepper}>
+          {showDuration && targetMinutes !== null && (
+            <View style={styles.durationRow}>
+              <Text style={styles.durationLabel}>{t('settings.workoutDuration')}</Text>
               <NumberStepper
                 label=""
                 value={targetMinutes}
@@ -276,108 +263,93 @@ export function SettingsForm({ mode }: SettingsFormProps) {
                 compact
               />
             </View>
-          </View>
-        )}
+          )}
 
-        {/* Settings grid - 2 columns */}
-        <View style={styles.grid}>
-          {/* Row 1: Rounds + Work Duration */}
-          <View style={styles.gridCell}>
-            <NumberStepper
-              label={isBoxing ? t('settings.rounds') : t('settings.intervals')}
-              value={config.rounds}
-              min={1}
-              max={roundsMax}
-              onChange={(v) => {
-                setConfig({ rounds: v });
-                setActivePresetId(null);
-              }}
-              compact
-            />
-          </View>
-          <View style={styles.gridCell}>
-            <DurationStepper
-              label={isBoxing ? t('settings.roundDuration') : t('settings.workDuration')}
-              value={config.workDuration}
-              min={workMin}
-              max={workMax}
-              step={workStep}
-              onChange={(v) => {
-                setConfig({ workDuration: v });
-                setActivePresetId(null);
-              }}
-              compact
-            />
+          <View style={styles.grid}>
+            <View style={styles.gridCell}>
+              <NumberStepper
+                label={isBoxing ? t('settings.rounds') : t('settings.intervals')}
+                value={config.rounds}
+                min={1}
+                max={roundsMax}
+                onChange={(v) => {
+                  setConfig({ rounds: v });
+                  setActivePresetId(null);
+                }}
+                compact
+              />
+            </View>
+            <View style={styles.gridCell}>
+              <DurationStepper
+                label={isBoxing ? t('settings.roundDuration') : t('settings.workDuration')}
+                value={config.workDuration}
+                min={workMin}
+                max={workMax}
+                step={workStep}
+                onChange={(v) => {
+                  setConfig({ workDuration: v });
+                  setActivePresetId(null);
+                }}
+                compact
+              />
+            </View>
+            <View style={styles.gridCell}>
+              <DurationStepper
+                label={t('settings.restDuration')}
+                value={config.restDuration}
+                min={5}
+                max={restMax}
+                step={5}
+                onChange={(v) => {
+                  setConfig({ restDuration: v });
+                  setActivePresetId(null);
+                }}
+                compact
+              />
+            </View>
+            <View style={styles.gridCell}>
+              <NumberStepper
+                label={t('settings.countdown')}
+                value={config.countdownDuration}
+                min={5}
+                max={30}
+                step={5}
+                onChange={(v) => {
+                  setConfig({ countdownDuration: v });
+                  setActivePresetId(null);
+                }}
+                formatValue={(v) => `${v}${t('settings.countdownUnit')}`}
+                compact
+              />
+            </View>
           </View>
 
-          {/* Row 2: Rest Duration + Countdown */}
-          <View style={styles.gridCell}>
-            <DurationStepper
-              label={t('settings.restDuration')}
-              value={config.restDuration}
-              min={5}
-              max={restMax}
-              step={5}
-              onChange={(v) => {
-                setConfig({ restDuration: v });
-                setActivePresetId(null);
-              }}
-              compact
-            />
-          </View>
-          <View style={styles.gridCell}>
-            <NumberStepper
-              label={t('settings.countdown')}
-              value={config.countdownDuration}
-              min={5}
-              max={30}
-              step={5}
-              onChange={(v) => {
-                setConfig({ countdownDuration: v });
-                setActivePresetId(null);
-              }}
-              formatValue={(v) => `${v}${t('settings.countdownUnit')}`}
-              compact
-            />
-          </View>
-        </View>
+          {!isBoxing && (
+            <View style={styles.toggleRow}>
+              <Pressable style={styles.soundCard} onPress={() => setShowSoundPicker(true)}>
+                <Text style={styles.toggleLabel}>{t('settings.soundScheme').toUpperCase()}</Text>
+                <View style={styles.soundValueRow}>
+                  <Text style={styles.soundValue}>{getSoundSchemeLabel(config.soundScheme)}</Text>
+                  <Text style={styles.soundChevron}>▾</Text>
+                </View>
+              </Pressable>
+            </View>
+          )}
 
-        {/* Sound scheme — only shown for tabata; boxing always uses bell */}
-        {!isBoxing && (
-          <View style={styles.togglesRow}>
-            <Pressable
-              style={styles.soundCard}
-              onPress={() => setShowSoundPicker(true)}
-            >
-              <Text style={styles.toggleLabel}>🔔 {t('settings.soundScheme')}</Text>
-              <View style={styles.soundValueRow}>
-                <Text style={styles.soundValue}>
-                  {getSoundSchemeLabel(config.soundScheme)}
-                </Text>
-                <Text style={styles.soundChevron}>▾</Text>
-              </View>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Total workout info */}
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>{t('settings.totalWorkout')}:</Text>
-          <Text style={styles.totalValue}>{formatTotalTime(totalSeconds)}</Text>
-          <Text style={styles.totalDetail}>
-            ({config.rounds} {isBoxing ? t('settings.roundsCalculated') : t('settings.intervalsCalculated')})
+          <Text style={styles.totalLine}>
+            <Text style={styles.totalLabel}>{t('settings.totalWorkout')}: </Text>
+            <Text style={styles.totalValue}>{formatTotalTime(totalSeconds)}</Text>
           </Text>
         </View>
-      </View>
 
-      {/* START button - always at bottom */}
-      <View style={[styles.startContainer, { paddingBottom: insets.bottom + 8 }]}>
-        <NeonButton
-          title={t('settings.start')}
-          onPress={handleStart}
-          color={Colors.green}
-          fullWidth
-        />
+        <View style={[styles.startContainer, { paddingBottom: insets.bottom + 8 }]}>
+          <NeonButton
+            title={t('settings.start').toUpperCase()}
+            onPress={handleStart}
+            color={Colors.green}
+            fullWidth
+          />
+        </View>
       </View>
 
       {!isBoxing && (
@@ -406,43 +378,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
-    height: 44,
+    height: 40,
+    marginBottom: 10,
+  },
+  backArrow: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 16,
+    color: Colors.green,
   },
   headerTitle: {
-    fontFamily: FontFamily.heading,
-    fontSize: 18,
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 16,
     color: Colors.textPrimary,
-    fontWeight: '700',
     letterSpacing: 1,
     textAlign: 'center',
   },
+  headerSpacer: {
+    width: 16,
+  },
   content: {
     flex: 1,
-    paddingHorizontal: Spacing.md,
     justifyContent: 'space-between',
-    paddingBottom: 8,
+    paddingHorizontal: Spacing.md,
   },
-  // Preset chips
   presetRow: {
-    gap: 8,
+    gap: 6,
     paddingBottom: 14,
   },
   presetChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.pill,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: Colors.surfaceLight,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
   },
   presetChipActive: {
-    borderColor: Colors.cyan,
-  },
-  presetIcon: {
-    fontSize: 14,
+    borderColor: Colors.green,
+    backgroundColor: 'rgba(57,255,20,0.1)',
   },
   presetChipText: {
     fontFamily: FontFamily.body,
@@ -450,32 +423,32 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   presetChipTextActive: {
-    color: Colors.cyan,
+    color: Colors.green,
   },
   presetChipSave: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.pill,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: Colors.surfaceLight,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    justifyContent: 'center',
   },
-  // Save input
+  presetChipSaveText: {
+    fontFamily: FontFamily.body,
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
   saveRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 8,
+    marginBottom: 12,
   },
   saveInput: {
     flex: 1,
     height: 38,
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.sm,
     borderWidth: 1,
     borderColor: Colors.border,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: 10,
     fontFamily: FontFamily.body,
     fontSize: FontSize.sm,
     color: Colors.textPrimary,
@@ -483,111 +456,86 @@ const styles = StyleSheet.create({
   saveBtn: {
     width: 38,
     height: 38,
-    borderRadius: BorderRadius.sm,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: Colors.surfaceLight,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  // Duration override
+  saveBtnText: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 14,
+    color: Colors.green,
+  },
   durationRow: {
-    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
     paddingHorizontal: 14,
     paddingVertical: 10,
     marginBottom: 14,
   },
   durationLabel: {
     fontFamily: FontFamily.body,
-    fontSize: 13,
+    fontSize: 11,
     color: Colors.textSecondary,
   },
-  durationStepper: {
-    marginRight: -6,
-  },
-  // Settings grid
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
     marginBottom: 14,
   },
   gridCell: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
+    width: '48%',
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: 10,
+    padding: 8,
   },
-  // Toggles
-  togglesRow: {
-    flexDirection: 'row',
-    gap: 10,
+  toggleRow: {
     marginBottom: 14,
   },
   soundCard: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   toggleLabel: {
     fontFamily: FontFamily.body,
-    fontSize: 12,
-    color: Colors.textSecondary,
+    fontSize: 9,
+    color: Colors.textMeta,
+    letterSpacing: 1,
+    marginBottom: 8,
   },
   soundValueRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 8,
   },
   soundValue: {
-    fontFamily: FontFamily.body,
-    fontSize: 14,
-    color: Colors.cyan,
-  },
-  soundChevron: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 14,
-    color: Colors.cyan,
-  },
-  // Total
-  totalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    marginBottom: 14,
-  },
-  totalLabel: {
-    fontFamily: FontFamily.body,
-    fontSize: 13,
-    color: Colors.textMuted,
-  },
-  totalValue: {
     fontFamily: FontFamily.bodySemiBold,
     fontSize: 13,
     color: Colors.textPrimary,
   },
-  totalDetail: {
+  soundChevron: {
     fontFamily: FontFamily.body,
-    fontSize: 13,
-    color: Colors.textMuted,
+    fontSize: 12,
+    color: Colors.textSecondary,
   },
-  // Start button
+  totalLine: {
+    textAlign: 'center',
+    fontFamily: FontFamily.body,
+    fontSize: 11,
+  },
+  totalLabel: {
+    color: Colors.textMeta,
+  },
+  totalValue: {
+    color: Colors.textSecondary,
+  },
   startContainer: {
-    paddingHorizontal: Spacing.md,
+    paddingTop: 16,
   },
 });

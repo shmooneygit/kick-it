@@ -1,6 +1,6 @@
 import React, { Component, ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { BorderRadius, Colors, FontFamily, Spacing } from '@/constants/theme';
+import { Colors, FontFamily, Spacing } from '@/constants/theme';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -61,8 +61,7 @@ const styles = StyleSheet.create({
   button: {
     minHeight: 48,
     minWidth: 140,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.cyan,
+    backgroundColor: Colors.green,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.lg,

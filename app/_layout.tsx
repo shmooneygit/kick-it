@@ -100,14 +100,20 @@ export default function RootLayout() {
           <Stack.Screen
             name="timer"
             options={{
+              presentation: 'card',
               animation: 'fade',
+              animationDuration: 180,
+              animationTypeForReplace: 'push',
               gestureEnabled: false,
             }}
           />
           <Stack.Screen
             name="result"
             options={{
-              animation: 'slide_from_bottom',
+              presentation: 'fullScreenModal',
+              animation: 'fade_from_bottom',
+              animationDuration: 220,
+              animationTypeForReplace: 'push',
               gestureEnabled: false,
             }}
           />

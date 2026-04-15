@@ -10,7 +10,6 @@ import {
   Colors,
   FontFamily,
   Spacing,
-  neonGlow,
   withOpacity,
 } from '@/constants/theme';
 import { createSessionResult } from '@/lib/session-result';
@@ -21,6 +20,14 @@ import { BadgeDef } from '@/lib/types';
 
 function badgeText(language: 'uk' | 'en', badge: BadgeDef): string {
   return language === 'uk' ? badge.name.uk : badge.name.en;
+}
+
+function getResultHeading(language: 'uk' | 'en', wasCompleted: boolean): string {
+  if (language === 'uk') {
+    return wasCompleted ? 'Тренування завершено' : 'Тренування зупинено';
+  }
+
+  return wasCompleted ? 'Workout completed' : 'Workout stopped';
 }
 
 export default function ResultScreen() {
@@ -66,16 +73,13 @@ export default function ResultScreen() {
       : createSessionResult(timerState, config.mode, timerState.phase === 'finished')
   );
 
-  const isBoxing = sessionResult.mode === 'boxing';
-  const modeIcon = isBoxing ? '🥊' : '⏱️';
   const accent = sessionResult.wasCompleted ? Colors.green : Colors.pink;
-  const title = sessionResult.wasCompleted
-    ? t('result.title')
-    : t('result.stoppedTitle');
   const dateLabel = workoutRecord
     ? format(parseISO(workoutRecord.date), 'dd.MM.yyyy HH:mm')
     : format(new Date(), 'dd.MM.yyyy HH:mm');
   const resultConfig = workoutRecord?.config ?? config;
+  const roundsLabel =
+    sessionResult.mode === 'boxing' ? t('result.roundsCompleted') : t('result.intervalsCompleted');
 
   const handleRepeat = () => {
     const repeatConfig = workoutRecord?.config ?? config;
@@ -87,49 +91,54 @@ export default function ResultScreen() {
 
   const handleDone = () => {
     clearLastResult();
+    if (router.canDismiss()) {
+      router.dismiss();
+      return;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
     router.replace('/' as Href);
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 },
+      ]}
+    >
       <View style={styles.content}>
-        <View style={[styles.statusCircle, { borderColor: accent, backgroundColor: withOpacity(accent, 0.1) }]}>
+        <View style={[styles.statusBox, { borderColor: accent }]}>
           <Text style={[styles.statusMark, { color: accent }]}>✓</Text>
         </View>
-        <Text style={styles.heading}>{title}</Text>
+
+        <Text style={styles.heading}>{getResultHeading(language, sessionResult.wasCompleted)}</Text>
         <Text style={styles.dateText}>{dateLabel}</Text>
 
         <View style={styles.statsCard}>
           <View style={styles.statsHeader}>
-            <Text style={styles.modeIcon}>{modeIcon}</Text>
-            <View style={styles.modeInfo}>
-              <Text style={styles.modeName}>{getPresetLabel(workoutRecord)}</Text>
-              <Text style={styles.modeMeta}>{formatConfigShorthand(resultConfig)}</Text>
-            </View>
+            <Text style={styles.modeName}>{getPresetLabel(workoutRecord)}</Text>
+            <Text style={styles.modeMeta}>{formatConfigShorthand(resultConfig)}</Text>
           </View>
 
           <View style={styles.statsGrid}>
             <View style={styles.statCell}>
-              <Text style={styles.statLabel}>
-                {isBoxing ? t('result.roundsCompleted') : t('result.intervalsCompleted')}
-              </Text>
+              <Text style={styles.statLabel}>{roundsLabel.toUpperCase()}</Text>
               <Text style={styles.statValue}>{sessionResult.completedRounds}</Text>
             </View>
             <View style={styles.statCell}>
-              <Text style={styles.statLabel}>{t('settings.restDuration')}</Text>
+              <Text style={styles.statLabel}>{t('settings.restDuration').toUpperCase()}</Text>
               <Text style={styles.statValue}>{formatTime(resultConfig.restDuration)}</Text>
             </View>
             <View style={styles.statCell}>
-              <Text style={styles.statLabel}>{t('result.totalTime')}</Text>
+              <Text style={styles.statLabel}>{t('result.totalTime').toUpperCase()}</Text>
               <Text style={[styles.statValue, styles.statValueAccent]}>
                 {formatTime(sessionResult.totalDuration)}
               </Text>
-            </View>
-            <View style={styles.statCell}>
-              <Text style={styles.statLabel}>
-                {isBoxing ? t('settings.roundDuration') : t('settings.workDuration')}
-              </Text>
-              <Text style={styles.statValue}>{formatTime(resultConfig.workDuration)}</Text>
             </View>
           </View>
         </View>
@@ -141,7 +150,7 @@ export default function ResultScreen() {
                 key={badge.id}
                 style={[styles.badgeRow, index < earnedBadges.length - 1 && styles.badgeRowGap]}
               >
-                <Text style={styles.badgeIcon}>{badge.icon}</Text>
+                <Text style={styles.badgeIcon}>★</Text>
                 <View style={styles.badgeInfo}>
                   <Text style={styles.badgeLabel}>{t('new_badge')}</Text>
                   <Text style={styles.badgeName}>{badgeText(language, badge)}</Text>
@@ -154,10 +163,10 @@ export default function ResultScreen() {
 
       <View style={styles.buttons}>
         <Pressable style={styles.secondaryButton} onPress={handleRepeat}>
-          <Text style={styles.secondaryButtonText}>🔄 {t('result.repeat')}</Text>
+          <Text style={styles.secondaryButtonText}>{t('result.repeat')}</Text>
         </Pressable>
         <Pressable style={styles.primaryButton} onPress={handleDone}>
-          <Text style={styles.primaryButtonText}>🏠 {t('result.done')}</Text>
+          <Text style={styles.primaryButtonText}>{t('result.done')}</Text>
         </Pressable>
       </View>
     </View>
@@ -172,158 +181,141 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
   },
-  statusCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  statusBox: {
+    width: 56,
+    height: 56,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'center',
     marginBottom: 16,
   },
   statusMark: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 32,
+    fontSize: 28,
   },
   heading: {
-    fontFamily: FontFamily.heading,
-    fontSize: 22,
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 20,
     color: Colors.textPrimary,
-    fontWeight: '700',
-    marginBottom: 8,
     textAlign: 'center',
+    marginBottom: 6,
   },
   dateText: {
     fontFamily: FontFamily.body,
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.textMuted,
+    textAlign: 'center',
     marginBottom: 24,
   },
   statsCard: {
-    width: '100%',
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    padding: 20,
-    marginBottom: 20,
+    borderColor: Colors.border,
+    padding: 18,
+    marginBottom: 16,
+  },
+  statsHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.hairline,
+    paddingBottom: 12,
+    marginBottom: 14,
+  },
+  modeName: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 15,
+    color: Colors.textPrimary,
+  },
+  modeMeta: {
+    fontFamily: FontFamily.body,
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 4,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  statCell: {
+    flex: 1,
+  },
+  statLabel: {
+    fontFamily: FontFamily.body,
+    fontSize: 9,
+    color: Colors.textMeta,
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  statValue: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 18,
+    color: Colors.textPrimary,
+  },
+  statValueAccent: {
+    color: Colors.green,
   },
   badgeCard: {
-    width: '100%',
-    backgroundColor: withOpacity(Colors.purple, 0.1),
-    borderRadius: 12,
     borderWidth: 1,
     borderColor: withOpacity(Colors.purple, 0.3),
+    backgroundColor: withOpacity(Colors.purple, 0.05),
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
   },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   badgeRowGap: {
     marginBottom: 8,
   },
   badgeIcon: {
-    fontSize: 24,
+    fontSize: 15,
+    color: Colors.purple,
   },
   badgeInfo: {
     flex: 1,
   },
   badgeLabel: {
     fontFamily: FontFamily.body,
-    fontSize: 12,
+    fontSize: 10,
     color: Colors.purple,
     marginBottom: 2,
   },
   badgeName: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.textPrimary,
-  },
-  statsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingBottom: 12,
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  modeIcon: {
-    fontSize: 24,
-  },
-  modeName: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 16,
-    color: Colors.textPrimary,
-  },
-  modeInfo: {
-    flex: 1,
-  },
-  modeMeta: {
-    fontFamily: FontFamily.body,
-    fontSize: 12,
-    color: Colors.textMuted,
-    marginTop: 2,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 14,
-  },
-  statCell: {
-    width: '47%',
-  },
-  statValue: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 20,
-    color: Colors.textPrimary,
-  },
-  statLabel: {
-    fontFamily: FontFamily.body,
-    fontSize: 11,
-    color: Colors.textMuted,
-    marginBottom: 4,
-  },
-  statValueAccent: {
-    color: Colors.cyan,
   },
   buttons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   secondaryButton: {
     flex: 1,
-    minHeight: 52,
-    borderRadius: 12,
+    minHeight: 48,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: Colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryButtonText: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 15,
-    color: Colors.cyan,
+    fontSize: 13,
+    color: Colors.green,
   },
   primaryButton: {
     flex: 1,
-    minHeight: 52,
-    borderRadius: 12,
+    minHeight: 48,
     backgroundColor: Colors.green,
     alignItems: 'center',
     justifyContent: 'center',
-    ...neonGlow(Colors.green, 18),
   },
   primaryButtonText: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 15,
+    fontSize: 13,
     color: Colors.background,
   },
 });

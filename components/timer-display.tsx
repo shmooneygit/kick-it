@@ -1,12 +1,7 @@
-import { View, Text, StyleSheet } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withTiming,
-  withRepeat,
-} from 'react-native-reanimated';
-import { useEffect } from 'react';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { createAnimatedComponent, useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useEffect, useRef } from 'react';
+import Svg, { Circle } from 'react-native-svg';
 import { useSettingsStore } from '@/store/settings-store';
 import { TimerPhase, TimerMode } from '@/lib/types';
 import { formatTime } from '@/lib/format';
@@ -14,10 +9,10 @@ import { t } from '@/lib/i18n';
 import {
   Colors,
   FontFamily,
-  FontSize,
   getPhaseColor,
-  neonGlow,
 } from '@/constants/theme';
+
+const AnimatedCircle = createAnimatedComponent(Circle);
 
 interface TimerDisplayProps {
   secondsRemaining: number;
@@ -25,6 +20,7 @@ interface TimerDisplayProps {
   currentRound: number;
   totalRounds: number;
   totalElapsed: number;
+  phaseDuration: number;
   mode: TimerMode;
   isPaused: boolean;
 }
@@ -50,109 +46,134 @@ function getPhaseLabel(
   }
 }
 
+function getDisplayColor(
+  phase: TimerPhase,
+  secondsRemaining: number,
+  isLastTabataInterval: boolean,
+): string {
+  if (isLastTabataInterval) {
+    return Colors.amber;
+  }
+
+  if (phase === 'work' && secondsRemaining > 0 && secondsRemaining <= 10) {
+    return Colors.amber;
+  }
+
+  return getPhaseColor(phase);
+}
+
 export function TimerDisplay({
   secondsRemaining,
   phase,
   currentRound,
   totalRounds,
   totalElapsed,
+  phaseDuration,
   mode,
   isPaused,
 }: TimerDisplayProps) {
-  useSettingsStore((s) => s.language);
+  const language = useSettingsStore((s) => s.language);
+  void isPaused;
 
+  const { width } = useWindowDimensions();
   const isLastTabataInterval =
     mode === 'tabata' &&
     currentRound === totalRounds &&
     (phase === 'work' || phase === 'rest');
-  const phaseColor = isLastTabataInterval ? Colors.amber : getPhaseColor(phase);
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
+  const phaseColor = getDisplayColor(phase, secondsRemaining, isLastTabataInterval);
+  const size = Math.min(width * 0.68, 280);
+  const strokeWidth = 8;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const remainingProgress = useSharedValue(
+    phaseDuration > 0 ? secondsRemaining / phaseDuration : 0,
+  );
+  const previousPhaseRef = useRef(phase);
 
-  // Pulse animation on each second
   useEffect(() => {
-    if (phase === 'finished') return;
-
-    const isLast10 = secondsRemaining <= 10 && secondsRemaining > 0;
-    const scaleTarget = isLast10 ? 1.03 : 1;
-    const duration = isLast10 ? 220 : 180;
-
-    scale.value = withSequence(
-      withTiming(scaleTarget, { duration }),
-      withTiming(1, { duration }),
-    );
-  }, [secondsRemaining, phase, scale]);
-
-  // Blinking when paused
-  useEffect(() => {
-    if (isPaused) {
-      opacity.value = withRepeat(
-        withSequence(
-          withTiming(0.3, { duration: 500 }),
-          withTiming(1, { duration: 500 }),
-        ),
-        -1,
-        false,
-      );
-      return () => {
-        opacity.value = withTiming(1, { duration: 200 });
-      };
-    } else {
-      opacity.value = withTiming(1, { duration: 200 });
+    if (previousPhaseRef.current !== phase) {
+      previousPhaseRef.current = phase;
+      remainingProgress.value = phaseDuration > 0 ? Math.max(0, secondsRemaining / phaseDuration) : 0;
+      return;
     }
-  }, [isPaused, opacity]);
 
-  const animatedDigitStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
+    remainingProgress.value = withTiming(
+      phaseDuration > 0 ? Math.max(0, secondsRemaining / phaseDuration) : 0,
+      { duration: 900 },
+    );
+  }, [phase, phaseDuration, remainingProgress, secondsRemaining]);
+
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: circumference * (1 - remainingProgress.value),
   }));
 
-  const isBoxing = mode === 'boxing';
-  let progressLabel: string | null = null;
+  const renderCounter = () => {
+    if (phase === 'rest' && currentRound < totalRounds) {
+      const nextRound = currentRound + 1;
+      const prefix = mode === 'boxing' ? t('timer.round') : t('timer.work');
+      return (
+        <Text style={styles.restCounter}>
+          {`${language === 'uk' ? 'Далі:' : 'Next:'} ${prefix.toLowerCase()} ${nextRound}`}
+        </Text>
+      );
+    }
 
-  if (!isBoxing && (phase === 'work' || phase === 'rest')) {
-    progressLabel = t('timer.interval_n_of_total', {
-      current: currentRound,
-      total: totalRounds,
-    });
-  } else if (phase === 'work') {
-    progressLabel = isBoxing
-      ? `${currentRound} ${t('timer.roundOf')} ${totalRounds}`
-      : `${currentRound} ${t('timer.intervalOf')} ${totalRounds}`;
-  } else if (phase === 'rest' && currentRound < totalRounds) {
-    progressLabel = isBoxing
-      ? `${t('timer.round')} ${currentRound + 1}`
-      : `${t('timer.work')} ${currentRound + 1}`;
-  }
+    if (phase === 'finished') {
+      return null;
+    }
+
+    return (
+      <Text style={styles.roundCounter}>
+        <Text style={styles.roundCounterCurrent}>{currentRound}</Text>
+        <Text style={styles.roundCounterTotal}>{` / ${totalRounds}`}</Text>
+      </Text>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      {/* Phase label */}
       <Text style={[styles.phaseLabel, { color: phaseColor }]}>
         {getPhaseLabel(phase, mode, isLastTabataInterval)}
       </Text>
 
-      {/* Progress info */}
-      {progressLabel && (
-        <Text style={styles.progress}>{progressLabel}</Text>
-      )}
+      {renderCounter()}
 
-      {/* Main countdown */}
-      <Animated.View style={animatedDigitStyle}>
-        <Text
-          style={[
-            styles.digits,
-            { color: phaseColor },
-            neonGlow(phaseColor, 25),
-          ]}
-        >
-          {formatTime(secondsRemaining)}
-        </Text>
-      </Animated.View>
+      <View style={[styles.ringContainer, { width: size, height: size }]}>
+        <Svg width={size} height={size}>
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={Colors.track}
+            strokeWidth={strokeWidth}
+            fill="none"
+            rotation="-90"
+            originX={size / 2}
+            originY={size / 2}
+          />
+          <AnimatedCircle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={phaseColor}
+            strokeWidth={strokeWidth}
+            strokeLinecap="butt"
+            fill="none"
+            strokeDasharray={`${circumference} ${circumference}`}
+            rotation="-90"
+            originX={size / 2}
+            originY={size / 2}
+            animatedProps={animatedProps}
+          />
+        </Svg>
 
-      {/* Total elapsed */}
+        <View style={styles.ringCenter}>
+          <Text style={[styles.digits, { color: phaseColor }]}>{formatTime(secondsRemaining)}</Text>
+        </View>
+      </View>
+
       <Text style={styles.elapsed}>
-        {t('timer.elapsed')}: {formatTime(totalElapsed)}
+        {`${t('timer.elapsed')}: ${formatTime(totalElapsed)}`}
       </Text>
     </View>
   );
@@ -160,36 +181,62 @@ export function TimerDisplay({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
+    paddingTop: 16,
   },
   phaseLabel: {
-    fontFamily: FontFamily.heading,
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 3,
-    marginBottom: 8,
+    fontFamily: FontFamily.body,
+    fontSize: 13,
+    letterSpacing: 4,
     textTransform: 'uppercase',
+    marginBottom: 10,
   },
-  progress: {
+  roundCounter: {
+    marginBottom: 24,
+  },
+  roundCounterCurrent: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 20,
-    color: Colors.textSecondary,
-    marginBottom: 40,
+    fontSize: 22,
+    color: Colors.textPrimary,
+  },
+  roundCounterTotal: {
+    fontFamily: FontFamily.body,
+    fontSize: 22,
+    color: Colors.textMuted,
+  },
+  restCounter: {
+    marginBottom: 24,
+    fontFamily: FontFamily.body,
+    fontSize: 22,
+    color: Colors.textMeta,
+  },
+  ringContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  ringCenter: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   digits: {
     fontFamily: FontFamily.timerDisplay,
-    fontSize: FontSize.timer,
-    letterSpacing: 6,
-    lineHeight: 124,
-    fontVariant: ['tabular-nums'],
+    fontSize: 78,
+    letterSpacing: 4,
+    color: Colors.green,
+    lineHeight: 80,
     textAlign: 'center',
   },
   elapsed: {
     fontFamily: FontFamily.body,
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.textMuted,
-    marginTop: 30,
   },
 });

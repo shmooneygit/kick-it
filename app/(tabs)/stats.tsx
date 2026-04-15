@@ -10,9 +10,7 @@ import { formatConfigShorthand, formatTime, getPresetLabel } from '@/lib/format'
 import {
   Colors,
   FontFamily,
-  FontSize,
   Spacing,
-  BorderRadius,
   withOpacity,
 } from '@/constants/theme';
 import { t } from '@/lib/i18n';
@@ -42,20 +40,19 @@ export default function StatsScreen() {
   const filtered = useMemo(() => {
     if (period === 'all') return history;
     const cutoff = period === 'week' ? subWeeks(new Date(), 1) : subMonths(new Date(), 1);
-    return history.filter((w) => isAfter(parseISO(w.date), cutoff));
+    return history.filter((workout) => isAfter(parseISO(workout.date), cutoff));
   }, [history, period]);
 
   const periodStats = useMemo(() => {
     let totalTime = 0;
     let totalRounds = 0;
-    for (const w of filtered) {
-      totalTime += w.totalDuration;
-      totalRounds += w.completedRounds;
+    for (const workout of filtered) {
+      totalTime += workout.totalDuration;
+      totalRounds += workout.completedRounds;
     }
     return { totalTime, totalRounds, count: filtered.length };
   }, [filtered]);
 
-  // Activity grid: last 12 weeks (84 days)
   const activityDays = useMemo(() => {
     const today = startOfDay(new Date());
     const start = subDays(today, 83);
@@ -68,10 +65,10 @@ export default function StatsScreen() {
       workoutCounts.set(key, (workoutCounts.get(key) ?? 0) + 1);
     }
 
-    return days.map((d) => ({
-      date: format(d, 'yyyy-MM-dd'),
-      count: workoutCounts.get(format(d, 'yyyy-MM-dd')) ?? 0,
-      isToday: format(d, 'yyyy-MM-dd') === todayKey,
+    return days.map((date) => ({
+      date: format(date, 'yyyy-MM-dd'),
+      count: workoutCounts.get(format(date, 'yyyy-MM-dd')) ?? 0,
+      isToday: format(date, 'yyyy-MM-dd') === todayKey,
     }));
   }, [history]);
 
@@ -86,18 +83,14 @@ export default function StatsScreen() {
 
   const renderWorkout = useCallback(
     ({ item }: { item: WorkoutRecord }) => {
-      const modeIcon = item.mode === 'boxing' ? '🥊' : '⏱️';
       return (
         <Pressable style={styles.workoutCard} onPress={() => handleRepeat(item)}>
-          <Text style={styles.workoutIcon}>{modeIcon}</Text>
           <View style={styles.workoutInfo}>
             <Text style={styles.workoutTitle}>{getPresetLabel(item)}</Text>
             <Text style={styles.workoutMeta}>{formatConfigShorthand(item)}</Text>
           </View>
           <Text style={styles.workoutDuration}>{formatTime(item.totalDuration)}</Text>
-          <View style={styles.repeatPill}>
-            <Text style={styles.repeatIcon}>▶</Text>
-          </View>
+          <Text style={styles.repeatIcon}>▶</Text>
         </Pressable>
       );
     },
@@ -111,66 +104,61 @@ export default function StatsScreen() {
   ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+    <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
       <Text style={styles.title}>{t('stats.title')}</Text>
 
-      {/* Period selector */}
       <View style={styles.periodRow}>
-        {periods.map((p) => (
+        {periods.map((item) => (
           <Pressable
-            key={p.key}
-            style={[styles.periodPill, period === p.key && styles.periodPillActive]}
-            onPress={() => setPeriod(p.key)}
+            key={item.key}
+            style={[styles.periodPill, period === item.key && styles.periodPillActive]}
+            onPress={() => setPeriod(item.key)}
           >
-            <Text style={[styles.periodText, period === p.key && styles.periodTextActive]}>
-              {p.label}
+            <Text style={[styles.periodText, period === item.key && styles.periodTextActive]}>
+              {item.label.toUpperCase()}
             </Text>
           </Pressable>
         ))}
       </View>
 
-      {/* Metric cards */}
       <View style={styles.metricsRow}>
         <View style={styles.metricCard}>
-          <Text style={styles.metricLabel}>{t('stats.totalTime')}</Text>
+          <Text style={styles.metricLabel}>{t('stats.totalTime').toUpperCase()}</Text>
           <Text style={styles.metricValue}>
             {formatTime(periodStats.totalTime, { style: 'summary' })}
           </Text>
-          <Text style={styles.metricSubtitle}>{periods.find((item) => item.key === period)?.label}</Text>
         </View>
         <View style={styles.metricCard}>
-          <Text style={styles.metricLabel}>{t('stats.totalRounds')}</Text>
+          <Text style={styles.metricLabel}>{t('stats.totalRounds').toUpperCase()}</Text>
           <Text style={styles.metricValue}>{periodStats.totalRounds}</Text>
-          <Text style={styles.metricSubtitle}>{periods.find((item) => item.key === period)?.label}</Text>
         </View>
         <View style={styles.metricCard}>
-          <Text style={styles.metricLabel}>{t('stats.totalWorkouts')}</Text>
+          <Text style={styles.metricLabel}>{t('stats.totalWorkouts').toUpperCase()}</Text>
           <Text style={styles.metricValue}>{periodStats.count}</Text>
-          <Text style={styles.metricSubtitle}>{periods.find((item) => item.key === period)?.label}</Text>
         </View>
       </View>
 
-      {/* Activity grid */}
       <View style={styles.gridSection}>
-        <Text style={styles.sectionLabel}>{t('stats.activity')}</Text>
-        <View style={styles.grid}>
-          {activityDays.map((day) => (
-            <View
-              key={day.date}
-              style={[
-                styles.gridCell,
-                day.count > 0
-                  ? { backgroundColor: withOpacity(Colors.green, Math.min(0.3 + day.count * 0.2, 1)) }
-                  : styles.gridCellInactive,
-                day.isToday && styles.gridCellToday,
-              ]}
-            />
-          ))}
+        <Text style={styles.sectionLabel}>{t('stats.activity').toUpperCase()}</Text>
+        <View style={styles.gridContainer}>
+          <View style={styles.grid}>
+            {activityDays.map((day) => (
+              <View
+                key={day.date}
+                style={[
+                  styles.gridCell,
+                  day.count > 0
+                    ? { backgroundColor: withOpacity(Colors.green, Math.min(0.3 + day.count * 0.2, 1)) }
+                    : styles.gridCellInactive,
+                  day.isToday && styles.gridCellToday,
+                ]}
+              />
+            ))}
+          </View>
         </View>
       </View>
 
-      {/* Recent workouts */}
-      <Text style={styles.sectionLabel}>{t('stats.recent')}</Text>
+      <Text style={styles.sectionLabel}>{t('stats.recent').toUpperCase()}</Text>
       {filtered.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>{t('stats.empty')}</Text>
@@ -199,33 +187,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
   },
   title: {
-    fontFamily: FontFamily.heading,
-    fontSize: 18,
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 16,
     color: Colors.textPrimary,
-    fontWeight: '700',
     letterSpacing: 1,
     marginBottom: 14,
     textAlign: 'center',
   },
   periodRow: {
     flexDirection: 'row',
-    alignSelf: 'center',
-    gap: 6,
+    borderWidth: 1,
+    borderColor: Colors.border,
     marginBottom: 16,
   },
   periodPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.pill,
-    backgroundColor: Colors.surfaceLight,
+    flex: 1,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
   },
   periodPillActive: {
-    backgroundColor: Colors.cyan,
+    backgroundColor: Colors.green,
   },
   periodText: {
     fontFamily: FontFamily.body,
-    fontSize: 13,
-    color: Colors.textSecondary,
+    fontSize: 10,
+    color: Colors.textMeta,
+    letterSpacing: 1,
   },
   periodTextActive: {
     color: Colors.background,
@@ -237,56 +226,54 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: 10,
-    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 10,
     alignItems: 'center',
-  },
-  metricValue: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 20,
-    color: Colors.textPrimary,
+    justifyContent: 'center',
   },
   metricLabel: {
     fontFamily: FontFamily.body,
-    fontSize: 11,
-    color: Colors.textMuted,
+    fontSize: 9,
+    color: Colors.textMeta,
+    letterSpacing: 1,
     textAlign: 'center',
+    marginBottom: 6,
   },
-  metricSubtitle: {
-    fontFamily: FontFamily.body,
-    fontSize: 10,
-    color: Colors.textMuted,
-    marginTop: 2,
+  metricValue: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 18,
+    color: Colors.textPrimary,
+    textAlign: 'center',
   },
   gridSection: {
     marginBottom: 16,
   },
   sectionLabel: {
     fontFamily: FontFamily.body,
-    fontSize: 11,
-    color: Colors.textMuted,
-    marginBottom: 8,
-    textTransform: 'uppercase',
+    fontSize: 10,
+    color: Colors.textMeta,
     letterSpacing: 1,
+    marginBottom: 8,
+  },
+  gridContainer: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 12,
   },
   grid: {
-    backgroundColor: Colors.surface,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    borderRadius: 12,
-    padding: 12,
     gap: GRID_GAP,
-    width: GRID_WIDTH + 24,
+    width: GRID_WIDTH,
     alignSelf: 'center',
   },
   gridCell: {
     width: GRID_SIZE,
     height: GRID_SIZE,
-    borderRadius: 3,
   },
   gridCellInactive: {
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.track,
   },
   gridCellToday: {
     borderWidth: 1,
@@ -298,15 +285,12 @@ const styles = StyleSheet.create({
   workoutCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: Colors.hairline,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
     marginBottom: 6,
-    gap: 10,
-  },
-  workoutIcon: {
-    fontSize: 16,
+    gap: 8,
   },
   workoutInfo: {
     flex: 1,
@@ -318,32 +302,28 @@ const styles = StyleSheet.create({
   },
   workoutMeta: {
     fontFamily: FontFamily.body,
-    fontSize: 12,
-    color: Colors.textMuted,
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
   workoutDuration: {
     fontFamily: FontFamily.body,
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  repeatPill: {
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    fontSize: 10,
+    color: Colors.textMuted,
   },
   repeatIcon: {
-    fontSize: 12,
-    color: Colors.cyan,
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 10,
+    color: Colors.green,
   },
   empty: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyText: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.md,
+    fontSize: 13,
     color: Colors.textMuted,
   },
 });

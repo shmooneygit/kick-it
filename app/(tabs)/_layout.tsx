@@ -1,5 +1,4 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
 import { Colors, FontFamily } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { useSettingsStore } from '@/store/settings-store';
@@ -7,60 +6,67 @@ import { useSettingsStore } from '@/store/settings-store';
 export default function TabLayout() {
   useSettingsStore((s) => s.language);
 
-  const renderEmoji = (emoji: string) => (
-    <Text style={{ fontSize: 18, lineHeight: 20 }}>{emoji}</Text>
-  );
-
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        animation: 'fade',
+        transitionSpec: {
+          animation: 'timing',
+          config: {
+            duration: 120,
+          },
+        },
+        sceneStyle: {
+          backgroundColor: Colors.background,
+        },
         tabBarStyle: {
           backgroundColor: Colors.tabBar,
-          borderTopColor: 'rgba(0,245,255,0.1)',
+          borderTopColor: Colors.border,
           borderTopWidth: 1,
-          height: 62,
+          height: 56,
           paddingTop: 4,
-          paddingBottom: 6,
+          paddingBottom: 8,
         },
-        tabBarActiveTintColor: Colors.cyan,
+        tabBarActiveTintColor: Colors.green,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarItemStyle: {
-          paddingVertical: 2,
+          justifyContent: 'center',
         },
         tabBarLabelStyle: {
           fontFamily: FontFamily.body,
-          fontSize: 10,
-          marginTop: 2,
+          fontSize: 9,
+          marginTop: 0,
+          letterSpacing: 1,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: t('tabs.timer'),
-          tabBarIcon: () => renderEmoji('🥊'),
+          title: t('tabs.timer').toUpperCase(),
+          tabBarIcon: () => null,
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
-          title: t('tabs.stats'),
-          tabBarIcon: () => renderEmoji('📊'),
+          title: t('tabs.stats').toUpperCase(),
+          tabBarIcon: () => null,
         }}
       />
       <Tabs.Screen
         name="achievements"
         options={{
-          title: t('tabs.achievements'),
-          tabBarIcon: () => renderEmoji('🏆'),
+          title: t('tabs.achievements').toUpperCase(),
+          tabBarIcon: () => null,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: t('tabs.settings'),
-          tabBarIcon: () => renderEmoji('⚙️'),
+          title: t('tabs.settings').toUpperCase(),
+          tabBarIcon: () => null,
         }}
       />
     </Tabs>

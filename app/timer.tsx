@@ -1,14 +1,9 @@
-import { View, Alert, StyleSheet, Dimensions } from 'react-native';
+import { View, Alert, StyleSheet, Text } from 'react-native';
 import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useHistoryStore } from '@/store/history-store';
 import { useAchievementStore } from '@/store/achievement-store';
@@ -19,14 +14,86 @@ import { triggerHaptic, triggerNotification } from '@/lib/haptics';
 import * as Haptics from 'expo-haptics';
 import { TimerDisplay } from '@/components/timer-display';
 import { ControlButtons } from '@/components/control-buttons';
-import { TimerPhase, UserPreset } from '@/lib/types';
+import { TimerMode, TimerPhase, TimerState, UserPreset, WorkoutConfig } from '@/lib/types';
 import { createSessionResult } from '@/lib/session-result';
 import { getPresetsForMode } from '@/lib/presets';
-import { Colors, getPhaseColor } from '@/constants/theme';
+import { Colors, FontFamily } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { useSettingsStore } from '@/store/settings-store';
+import { formatTime } from '@/lib/format';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
+function getPhaseDuration(config: WorkoutConfig, phase: TimerPhase): number {
+  switch (phase) {
+    case 'countdown':
+      return config.countdownDuration;
+    case 'work':
+      return config.workDuration;
+    case 'rest':
+      return config.restDuration;
+    case 'finished':
+      return 0;
+  }
+}
+
+function getTotalRemainingSeconds(config: WorkoutConfig, timerState: TimerState): number {
+  if (timerState.phase === 'finished') {
+    return 0;
+  }
+
+  if (timerState.phase === 'countdown') {
+    return (
+      timerState.secondsRemaining +
+      config.rounds * config.workDuration +
+      Math.max(0, config.rounds - 1) * config.restDuration
+    );
+  }
+
+  if (timerState.phase === 'work') {
+    const futureRounds = Math.max(0, config.rounds - timerState.currentRound);
+    const hasRestAfterCurrent = timerState.currentRound < config.rounds ? config.restDuration : 0;
+    return (
+      timerState.secondsRemaining +
+      hasRestAfterCurrent +
+      futureRounds * config.workDuration +
+      Math.max(0, futureRounds - 1) * config.restDuration
+    );
+  }
+
+  const futureRounds = Math.max(0, config.rounds - timerState.currentRound);
+  return (
+    timerState.secondsRemaining +
+    futureRounds * config.workDuration +
+    Math.max(0, futureRounds - 1) * config.restDuration
+  );
+}
+
+function getNextPhaseLabel(
+  language: 'uk' | 'en',
+  config: WorkoutConfig,
+  timerState: Pick<TimerState, 'phase' | 'currentRound'> & { mode: TimerMode },
+): string {
+  const nextPrefix = language === 'uk' ? 'Далі:' : 'Next:';
+
+  if (timerState.phase === 'finished') {
+    return `${nextPrefix} ${t('timer.finished')}`;
+  }
+
+  if (timerState.phase === 'countdown') {
+    const nextName = timerState.mode === 'boxing' ? t('timer.round') : t('timer.work');
+    return `${nextPrefix} ${nextName} 1 · ${formatTime(config.workDuration)}`;
+  }
+
+  if (timerState.phase === 'work') {
+    if (timerState.currentRound >= config.rounds) {
+      return `${nextPrefix} ${t('timer.finished')}`;
+    }
+    return `${nextPrefix} ${t('timer.rest')} ${formatTime(config.restDuration)}`;
+  }
+
+  const nextRound = timerState.currentRound + 1;
+  const nextName = timerState.mode === 'boxing' ? t('timer.round') : t('timer.work');
+  return `${nextPrefix} ${nextName} ${nextRound} · ${formatTime(config.workDuration)}`;
+}
 
 export default function TimerScreen() {
   useKeepAwake();
@@ -39,28 +106,14 @@ export default function TimerScreen() {
   const language = useSettingsStore((s) => s.language);
   const addWorkout = useHistoryStore((s) => s.addWorkout);
   const checkAndUnlockBadges = useAchievementStore((s) => s.checkAndUnlockBadges);
-  const { play, startKeepAlive, stopKeepAlive } = useSound(
-    config.soundScheme,
-  );
+  const { play, startKeepAlive, stopKeepAlive } = useSound(config.soundScheme);
   const startedRef = useRef(false);
   const savedRef = useRef(false);
   const savedRouteParamsRef = useRef<{ recordId: string; newBadgeIds?: string } | null>(null);
   const isTabata = config.mode === 'tabata';
 
-  const totalWorkoutSeconds = useMemo(
-    () =>
-      config.countdownDuration +
-      config.rounds * config.workDuration +
-      (config.rounds - 1) * config.restDuration,
-    [config],
-  );
-
-  const progressWidth = useSharedValue(0);
-  const progressColor = useSharedValue<string>(Colors.countdown);
-
   const onPhaseChange = useCallback(
     (phase: TimerPhase, round: number) => {
-      progressColor.value = getPhaseColor(phase);
       switch (phase) {
         case 'countdown':
           triggerHaptic();
@@ -78,7 +131,7 @@ export default function TimerScreen() {
           break;
       }
     },
-    [config.mode, config.rounds, isTabata, play, progressColor],
+    [config.mode, config.rounds, isTabata, play],
   );
 
   const onTick = useCallback(
@@ -111,18 +164,6 @@ export default function TimerScreen() {
     onFinish,
   });
 
-  // Update progress bar
-  useEffect(() => {
-    if (totalWorkoutSeconds > 0) {
-      const pct = Math.min(
-        timerState.totalElapsedSeconds / totalWorkoutSeconds,
-        1,
-      );
-      progressWidth.value = withTiming(pct, { duration: 300 });
-    }
-  }, [timerState.totalElapsedSeconds, totalWorkoutSeconds, progressWidth]);
-
-  // Start timer on mount
   useEffect(() => {
     if (!startedRef.current) {
       clearLastResult();
@@ -191,9 +232,7 @@ export default function TimerScreen() {
       const newBadgeIds = await checkAndUnlockBadges(record);
       const routeParams = {
         recordId: record.id,
-        ...(newBadgeIds.length > 0
-          ? { newBadgeIds: JSON.stringify(newBadgeIds) }
-          : {}),
+        ...(newBadgeIds.length > 0 ? { newBadgeIds: JSON.stringify(newBadgeIds) } : {}),
       };
       savedRouteParamsRef.current = routeParams;
       return routeParams;
@@ -235,111 +274,41 @@ export default function TimerScreen() {
     });
   };
 
-  const progressBarStyle = useAnimatedStyle(() => ({
-    width: progressWidth.value * SCREEN_WIDTH,
-    backgroundColor: progressColor.value,
-  }));
-
-  const tabataSegments = useMemo(() => {
-    if (!isTabata || timerState.totalRounds <= 0) {
-      return [];
-    }
-
-    const cycleDuration = config.workDuration + config.restDuration;
-
-    return Array.from({ length: timerState.totalRounds }, (_, index) => {
-      const segmentRound = index + 1;
-
-      if (timerState.phase === 'finished') {
-        return 1;
-      }
-
-      if (segmentRound < timerState.currentRound) {
-        return 1;
-      }
-
-      if (segmentRound > timerState.currentRound) {
-        return 0;
-      }
-
-      if (timerState.phase === 'countdown' || cycleDuration <= 0) {
-        return 0;
-      }
-
-      if (timerState.phase === 'work') {
-        return Math.max(
-          0,
-          Math.min(
-            1,
-            (config.workDuration - timerState.secondsRemaining) / cycleDuration,
-          ),
-        );
-      }
-
-      if (timerState.phase === 'rest') {
-        return Math.max(
-          0,
-          Math.min(
-            1,
-            (config.workDuration + (config.restDuration - timerState.secondsRemaining)) /
-              cycleDuration,
-          ),
-        );
-      }
-
-      return 0;
-    });
-  }, [
-    config.restDuration,
-    config.workDuration,
-    isTabata,
-    timerState.currentRound,
-    timerState.phase,
-    timerState.secondsRemaining,
-    timerState.totalRounds,
-  ]);
+  const phaseDuration = useMemo(
+    () => getPhaseDuration(config, timerState.phase),
+    [config, timerState.phase],
+  );
+  const totalRemainingSeconds = useMemo(
+    () => getTotalRemainingSeconds(config, timerState),
+    [config, timerState],
+  );
+  const nextPhaseLabel = useMemo(
+    () => getNextPhaseLabel(language, config, { phase: timerState.phase, currentRound: timerState.currentRound, mode: config.mode }),
+    [config, language, timerState],
+  );
+  const isWarning =
+    timerState.phase === 'work' &&
+    timerState.secondsRemaining > 0 &&
+    timerState.secondsRemaining <= 10;
 
   return (
     <View
       style={[
         styles.container,
-        { paddingTop: insets.top, paddingBottom: insets.bottom + 8 },
+        { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 },
       ]}
     >
-      {isTabata ? (
-        <View style={styles.segmentedTrack}>
-          {tabataSegments.map((fill, index) => (
-            <View key={index} style={styles.segmentShell}>
-              <View
-                style={[
-                  styles.segmentFill,
-                  {
-                    width: `${fill * 100}%`,
-                    opacity: fill > 0 ? 1 : 0,
-                  },
-                ]}
-              />
-            </View>
-          ))}
-        </View>
-      ) : (
-        <View style={styles.progressTrack}>
-          <Animated.View style={[styles.progressFill, progressBarStyle]} />
-        </View>
-      )}
-
-      {/* Timer display */}
       <TimerDisplay
         secondsRemaining={timerState.secondsRemaining}
         phase={timerState.phase}
         currentRound={timerState.currentRound}
         totalRounds={timerState.totalRounds}
         totalElapsed={timerState.totalElapsedSeconds}
+        phaseDuration={phaseDuration}
         mode={config.mode}
         isPaused={timerState.isPaused}
       />
 
-      {/* Controls */}
       <ControlButtons
         isPaused={timerState.isPaused}
         isFinished={timerState.phase === 'finished'}
@@ -347,6 +316,15 @@ export default function TimerScreen() {
         onStop={handleStop}
         onHome={handleHome}
       />
+
+      <View style={styles.infoBar}>
+        <Text style={[styles.infoText, styles.infoTextLeft, isWarning && styles.infoAccent]} numberOfLines={1}>
+          {nextPhaseLabel}
+        </Text>
+        <Text style={styles.infoText}>
+          {(language === 'uk' ? 'Залиш:' : 'Left:') + ` ${formatTime(totalRemainingSeconds)}`}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -355,35 +333,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
-  progressTrack: {
-    height: 4,
-    backgroundColor: Colors.surfaceLight,
-    width: '100%',
-    borderRadius: 2,
-    marginBottom: 30,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  segmentedTrack: {
+  infoBar: {
     flexDirection: 'row',
-    gap: 3,
-    width: '100%',
-    height: 6,
-    marginBottom: 30,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.hairline,
+    paddingTop: 10,
   },
-  segmentShell: {
+  infoText: {
+    fontFamily: FontFamily.body,
+    fontSize: 10,
+    color: Colors.textMuted,
+  },
+  infoTextLeft: {
     flex: 1,
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: 3,
-    overflow: 'hidden',
   },
-  segmentFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: Colors.green,
+  infoAccent: {
+    color: Colors.amber,
   },
 });

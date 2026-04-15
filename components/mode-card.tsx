@@ -56,7 +56,7 @@ export function ModeCard({
         style={[animatedStyle, styles.pressable]}
       >
         <LinearGradient
-          colors={[Colors.surface, Colors.surface, gradientTo]}
+          colors={[Colors.background, Colors.background, gradientTo]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.card}
@@ -85,7 +85,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
-    borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.border,
     padding: 20,

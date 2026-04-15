@@ -1,31 +1,32 @@
 import { TimerPhase } from '@/lib/types';
 
 export const Colors = {
-  bg: '#0A0A0F',
-  surface: '#12121C',
-  surfaceLight: '#1A1A2E',
-  surfaceBorder: '#252540',
-  tabBar: '#0D0D15',
+  surfaceBorder: '#1A1A1A',
+  tabBar: '#000000',
 
-  cyan: '#00F5FF',
+  accent: '#39FF14',
   green: '#39FF14',
   pink: '#FF006E',
   amber: '#FFB800',
   purple: '#B24BF3',
 
   textPrimary: '#FFFFFF',
-  textSecondary: '#8888AA',
-  textMuted: '#555577',
+  textSecondary: '#555555',
+  textMuted: '#333333',
+  textMeta: '#444444',
 
   work: '#39FF14',
   rest: '#FF006E',
   countdown: '#FFB800',
-  finished: '#00F5FF',
+  finished: '#39FF14',
 
   danger: '#FF006E',
-  background: '#0A0A0F',
-  border: '#252540',
-  surfaceGlass: 'rgba(26,26,46,0.7)',
+  background: '#000000',
+  border: '#1A1A1A',
+  hairline: '#111111',
+  track: '#111111',
+  toggleOff: '#1A1A1A',
+  toggleThumbOff: '#444444',
 } as const;
 
 export const Spacing = {
@@ -38,14 +39,12 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
-  sm: 8,
-  md: 12,
-  lg: 14,
-  xl: 16,
+  sm: 0,
+  md: 0,
+  lg: 0,
+  xl: 0,
   pill: 20,
 } as const;
-
-export const BorderRadius = Radius;
 
 export const FontFamily = {
   timer: 'Orbitron_400Regular',
@@ -76,16 +75,6 @@ export function getPhaseColor(phase: TimerPhase): string {
   return map[phase];
 }
 
-export function glow(color: string, radius = 10) {
-  return {
-    shadowColor: color,
-    shadowOffset: { width: 0, height: 0 } as const,
-    shadowOpacity: 0.25,
-    shadowRadius: radius,
-    elevation: radius,
-  };
-}
-
 export function withOpacity(hex: string, opacity: number) {
   const value = hex.replace('#', '');
   const normalized = value.length === 3
@@ -98,5 +87,3 @@ export function withOpacity(hex: string, opacity: number) {
 
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
-
-export const neonGlow = glow;

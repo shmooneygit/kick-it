@@ -8,7 +8,7 @@ import { useSettingsStore } from '@/store/settings-store';
 import { badgeDefs } from '@/lib/badges';
 import { getLevel } from '@/lib/levels';
 import { BadgeDef } from '@/lib/types';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
+import { Colors, FontFamily, Spacing, withOpacity } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 
 function badgeText(language: 'uk' | 'en', obj: { uk: string; en: string }): string {
@@ -26,13 +26,15 @@ export default function AchievementsScreen() {
   const level = getLevel(stats.totalRounds);
   const levelName = badgeText(language, level.name);
   const nextLevelName =
-    level.nextLevel === Infinity ? t('achievements.maxLevel') : badgeText(language, getLevel(level.nextLevel).name);
+    level.nextLevel === Infinity
+      ? t('achievements.maxLevel')
+      : badgeText(language, getLevel(level.nextLevel).name);
   const progressToNext =
     level.nextLevel === Infinity
       ? 1
       : (stats.totalRounds - level.minRounds) / (level.nextLevel - level.minRounds);
 
-  const badgeMap = new Map(badges.map((b) => [b.id, b]));
+  const badgeMap = new Map(badges.map((badge) => [badge.id, badge]));
 
   const handleBadgePress = useCallback((def: BadgeDef) => {
     setSelectedBadge(def);
@@ -40,87 +42,85 @@ export default function AchievementsScreen() {
 
   return (
     <ScrollView
-      style={[styles.container, { paddingTop: insets.top + 8 }]}
+      style={[styles.container, { paddingTop: insets.top + 10 }]}
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
       <Text style={styles.title}>{t('achievements.title')}</Text>
 
-      {/* Level system */}
       <View style={styles.levelCard}>
         <View style={styles.levelTopRow}>
           <View>
-            <Text style={styles.levelLabel}>{t('achievements.level')}</Text>
+            <Text style={styles.levelLabel}>{t('achievements.level').toUpperCase()}</Text>
             <Text style={styles.levelName}>{levelName}</Text>
           </View>
           <View style={styles.levelRight}>
-            <Text style={styles.levelLabel}>{t('achievements.next')}</Text>
+            <Text style={styles.levelLabel}>{t('achievements.next').toUpperCase()}</Text>
             <Text style={styles.levelNext}>{nextLevelName}</Text>
           </View>
         </View>
         <View style={styles.levelBarTrack}>
           <LinearGradient
-            colors={[Colors.cyan, Colors.purple]}
+            colors={[Colors.green, Colors.purple]}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={[styles.levelBarFill, { width: `${Math.min(progressToNext * 100, 100)}%` }]}
           />
         </View>
         <Text style={styles.levelProgress}>
-          {stats.totalRounds} / {level.nextLevel === Infinity ? '∞' : level.nextLevel} {t('achievements.rounds')}
+          {`${stats.totalRounds} / ${level.nextLevel === Infinity ? '∞' : level.nextLevel} ${t('achievements.rounds')}`}
         </Text>
       </View>
 
-      {/* Streak */}
       <View style={styles.streakRow}>
         <View style={styles.streakCard}>
-          <Text style={styles.streakIcon}>🔥</Text>
+          <Text style={styles.streakIconActive}>★</Text>
           <Text style={styles.streakValue}>{stats.currentStreak}</Text>
-          <Text style={styles.streakLabel}>{t('achievements.currentStreak')}</Text>
+          <Text style={styles.streakLabel}>{t('achievements.currentStreak').toUpperCase()}</Text>
         </View>
         <View style={styles.streakCard}>
-          <Text style={styles.streakIconMuted}>🏆</Text>
+          <Text style={styles.streakIconMuted}>★</Text>
           <Text style={styles.streakValue}>{stats.bestStreak}</Text>
-          <Text style={styles.streakLabel}>{t('achievements.bestStreak')}</Text>
+          <Text style={styles.streakLabel}>{t('achievements.bestStreak').toUpperCase()}</Text>
         </View>
       </View>
 
-      {/* Badges grid */}
-      <Text style={styles.sectionLabel}>{t('achievements.badges')}</Text>
+      <Text style={styles.sectionLabel}>{t('achievements.badges').toUpperCase()}</Text>
       <View style={styles.badgeGrid}>
         {badgeDefs.map((def) => {
           const state = badgeMap.get(def.id);
           const earned = state?.earned ?? false;
+          const isStreakBadge = def.id.startsWith('streak_');
+          const accent = isStreakBadge ? Colors.amber : Colors.green;
+
           return (
             <Pressable
               key={def.id}
-              style={[styles.badgeCell, earned && styles.badgeCellEarned]}
+              style={[
+                styles.badgeCell,
+                earned && { borderColor: withOpacity(accent, 0.2) },
+                !earned && styles.badgeCellLocked,
+              ]}
               onPress={() => handleBadgePress(def)}
             >
-              <Text style={[styles.badgeIcon, !earned && styles.badgeIconLocked]}>
-                {earned ? def.icon : '🔒'}
-              </Text>
-              <Text
-                style={[styles.badgeName, !earned && styles.badgeNameLocked]}
-                numberOfLines={1}
-              >
+              <Text style={[styles.badgeIcon, { color: earned ? accent : Colors.textMuted }]}>★</Text>
+              <Text style={[styles.badgeName, !earned && styles.badgeNameLocked]} numberOfLines={2}>
                 {badgeText(language, def.name)}
               </Text>
               {earned ? (
-                <Text style={styles.badgeCheck}>✓</Text>
+                <Text style={[styles.badgeCheck, { color: accent }]}>✓</Text>
               ) : state?.progress ? (
                 <Text style={styles.badgeProgress}>
                   {state.progress.current}/{state.progress.target}
                 </Text>
               ) : (
-                <Text style={styles.badgeProgress}>🔒</Text>
+                <Text style={styles.badgeProgress}>—</Text>
               )}
             </Pressable>
           );
         })}
       </View>
 
-      {/* Badge detail modal */}
       <Modal
         visible={selectedBadge !== null}
         transparent
@@ -136,13 +136,16 @@ export default function AchievementsScreen() {
                 <Text style={styles.modalDesc}>{badgeText(language, selectedBadge.description)}</Text>
                 {(() => {
                   const state = badgeMap.get(selectedBadge.id);
-                  if (state?.earned) return <Text style={styles.modalEarned}>{t('achievements.earned')}</Text>;
-                  if (state?.progress)
+                  if (state?.earned) {
+                    return <Text style={styles.modalEarned}>{t('achievements.earned')}</Text>;
+                  }
+                  if (state?.progress) {
                     return (
                       <Text style={styles.modalProgress}>
                         {state.progress.current} / {state.progress.target}
                       </Text>
                     );
+                  }
                   return null;
                 })()}
               </>
@@ -161,205 +164,185 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
   },
   contentContainer: {
-    paddingBottom: 32,
+    paddingBottom: 24,
   },
   title: {
-    fontFamily: FontFamily.heading,
-    fontSize: 18,
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 16,
     color: Colors.textPrimary,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginBottom: 16,
     textAlign: 'center',
+    letterSpacing: 1,
+    marginBottom: 14,
   },
-  // Level
   levelCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    padding: 16,
+    borderColor: Colors.border,
+    padding: 14,
     marginBottom: 14,
   },
   levelTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 14,
-  },
-  levelLabel: {
-    fontFamily: FontFamily.body,
-    fontSize: 11,
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  levelName: {
-    fontFamily: FontFamily.heading,
-    fontSize: 22,
-    color: Colors.textPrimary,
-    fontWeight: '700',
-    marginTop: 4,
+    marginBottom: 12,
   },
   levelRight: {
     alignItems: 'flex-end',
   },
-  levelNext: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginTop: 4,
-  },
-  levelBarTrack: {
-    width: '100%',
-    height: 6,
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: 3,
-    marginBottom: Spacing.xs,
-    overflow: 'hidden',
-  },
-  levelBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  levelProgress: {
+  levelLabel: {
     fontFamily: FontFamily.body,
-    fontSize: 11,
-    color: Colors.textSecondary,
+    fontSize: 9,
+    color: Colors.textMeta,
+    letterSpacing: 1,
+    marginBottom: 4,
   },
-  // Streak
-  streakRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
-  streakCard: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    padding: 12,
-    alignItems: 'center',
-  },
-  streakIcon: {
-    fontSize: 24,
-    marginBottom: 6,
-  },
-  streakIconMuted: {
-    fontSize: 24,
-    marginBottom: 6,
-    opacity: 0.7,
-  },
-  streakValue: {
+  levelName: {
     fontFamily: FontFamily.bodySemiBold,
     fontSize: 20,
     color: Colors.textPrimary,
   },
+  levelNext: {
+    fontFamily: FontFamily.body,
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  levelBarTrack: {
+    height: 4,
+    backgroundColor: Colors.track,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  levelBarFill: {
+    height: '100%',
+  },
+  levelProgress: {
+    fontFamily: FontFamily.body,
+    fontSize: 10,
+    color: Colors.textMeta,
+  },
+  streakRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  streakCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 10,
+    alignItems: 'center',
+  },
+  streakIconActive: {
+    fontSize: 18,
+    color: Colors.amber,
+    marginBottom: 6,
+  },
+  streakIconMuted: {
+    fontSize: 18,
+    color: Colors.textMuted,
+    marginBottom: 6,
+  },
+  streakValue: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 17,
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
   streakLabel: {
     fontFamily: FontFamily.body,
-    fontSize: 11,
-    color: Colors.textMuted,
+    fontSize: 9,
+    color: Colors.textMeta,
+    letterSpacing: 1,
     textAlign: 'center',
   },
   sectionLabel: {
     fontFamily: FontFamily.body,
-    fontSize: 11,
-    color: Colors.textMuted,
-    marginBottom: 8,
-    textTransform: 'uppercase',
+    fontSize: 9,
+    color: Colors.textMeta,
     letterSpacing: 1,
+    marginBottom: 8,
   },
-  // Badges
   badgeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   badgeCell: {
-    width: '31%',
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
+    width: '31.6%',
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
+    borderColor: Colors.border,
+    minHeight: 102,
     padding: 10,
     alignItems: 'center',
-    minHeight: 96,
     justifyContent: 'center',
   },
-  badgeCellEarned: {
-    borderColor: 'rgba(57,255,20,0.2)',
+  badgeCellLocked: {
+    opacity: 0.45,
   },
   badgeIcon: {
-    fontSize: 28,
-    marginBottom: 4,
-  },
-  badgeIconLocked: {
-    opacity: 0.5,
+    fontSize: 18,
+    marginBottom: 6,
   },
   badgeName: {
     fontFamily: FontFamily.body,
     fontSize: 11,
     color: Colors.textPrimary,
     textAlign: 'center',
+    marginBottom: 6,
   },
   badgeNameLocked: {
-    color: Colors.textMuted,
+    color: Colors.textMeta,
   },
   badgeCheck: {
     fontFamily: FontFamily.bodySemiBold,
     fontSize: 10,
-    color: Colors.green,
-    marginTop: 4,
   },
   badgeProgress: {
     fontFamily: FontFamily.body,
     fontSize: 10,
-    color: Colors.textMuted,
-    marginTop: 4,
+    color: Colors.textMeta,
   },
-  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.8)',
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
   },
   modalContent: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+    width: '100%',
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    padding: Spacing.xl,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    padding: 20,
     alignItems: 'center',
-    width: '80%',
   },
   modalIcon: {
-    fontSize: 48,
-    marginBottom: Spacing.md,
+    fontSize: 40,
+    marginBottom: 12,
   },
   modalName: {
-    fontFamily: FontFamily.heading,
-    fontSize: FontSize.lg,
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 16,
     color: Colors.textPrimary,
-    fontWeight: '700',
-    marginBottom: Spacing.sm,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   modalDesc: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.md,
+    fontSize: 13,
     color: Colors.textSecondary,
     textAlign: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: 10,
   },
   modalEarned: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: FontSize.sm,
+    fontSize: 11,
     color: Colors.green,
   },
   modalProgress: {
-    fontFamily: FontFamily.timer,
-    fontSize: FontSize.lg,
+    fontFamily: FontFamily.body,
+    fontSize: 11,
     color: Colors.amber,
   },
 });

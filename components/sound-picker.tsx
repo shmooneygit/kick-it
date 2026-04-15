@@ -89,42 +89,44 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   sheet: {
-    backgroundColor: Colors.surface,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 20,
+    backgroundColor: Colors.background,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    padding: 16,
   },
   title: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 16,
+    fontFamily: FontFamily.body,
+    fontSize: 10,
     color: Colors.textPrimary,
-    marginBottom: 16,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   option: {
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: 10,
+    backgroundColor: Colors.background,
     borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     marginBottom: 8,
   },
   optionIdle: {
     borderColor: Colors.border,
   },
   optionSelected: {
-    borderColor: Colors.cyan,
+    borderColor: Colors.green,
+    backgroundColor: 'rgba(57,255,20,0.08)',
   },
   optionLast: {
     marginBottom: 0,
   },
   optionText: {
     fontFamily: FontFamily.body,
-    fontSize: 14,
+    fontSize: 13,
   },
   optionTextIdle: {
     color: Colors.textSecondary,
   },
   optionTextSelected: {
-    color: Colors.textPrimary,
+    color: Colors.green,
   },
 });

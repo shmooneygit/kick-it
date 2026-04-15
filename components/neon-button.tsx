@@ -7,8 +7,6 @@ import Animated, {
 import {
   Colors,
   FontFamily,
-  BorderRadius,
-  neonGlow,
 } from '@/constants/theme';
 import { triggerHaptic } from '@/lib/haptics';
 import * as Haptics from 'expo-haptics';
@@ -26,12 +24,12 @@ interface NeonButtonProps {
 export function NeonButton({
   title,
   onPress,
-  color = Colors.cyan,
+  color = Colors.green,
   disabled = false,
   fullWidth = false,
 }: NeonButtonProps) {
   const scale = useSharedValue(1);
-  const isPrimaryGreen = color === Colors.green;
+  const isPrimaryAction = color === Colors.green;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -56,7 +54,7 @@ export function NeonButton({
         animatedStyle,
         styles.button,
         { backgroundColor: color },
-        isPrimaryGreen && neonGlow(color, 24),
+        !isPrimaryAction && styles.buttonSecondary,
         disabled && styles.disabled,
         fullWidth && styles.fullWidth,
       ]}
@@ -64,7 +62,7 @@ export function NeonButton({
       <Text
         style={[
           styles.text,
-          isPrimaryGreen ? styles.textPrimaryAction : styles.textSecondaryAction,
+          isPrimaryAction ? styles.textPrimaryAction : styles.textSecondaryAction,
         ]}
       >
         {title}
@@ -75,11 +73,14 @@ export function NeonButton({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 56,
+    minHeight: 58,
     paddingHorizontal: 24,
-    borderRadius: BorderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  buttonSecondary: {
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   fullWidth: {
     width: '100%',
@@ -89,14 +90,14 @@ const styles = StyleSheet.create({
   },
   text: {
     fontFamily: FontFamily.heading,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    letterSpacing: 3,
+    letterSpacing: 5,
   },
   textPrimaryAction: {
     color: Colors.background,
   },
   textSecondaryAction: {
-    color: Colors.textPrimary,
+    color: Colors.green,
   },
 });

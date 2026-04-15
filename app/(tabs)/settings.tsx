@@ -14,7 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettingsStore } from '@/store/settings-store';
 import { usePresets } from '@/hooks/use-presets';
 import { NumberStepper } from '@/components/number-stepper';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '@/constants/theme';
+import { Colors, FontFamily, Spacing } from '@/constants/theme';
+import { getSoundSchemeLabel } from '@/lib/format';
 import { t } from '@/lib/i18n';
 
 export default function SettingsScreen() {
@@ -57,112 +58,118 @@ export default function SettingsScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top + 10, paddingBottom: insets.bottom },
+      ]}
+    >
       <Text style={styles.title}>{t('settingsScreen.title')}</Text>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
-        <View>
-            {/* Sound & Vibration */}
-            <Text style={styles.sectionLabel}>{t('settingsScreen.soundVibration')}</Text>
-            <View style={styles.card}>
-              {/* Vibration */}
-              <View style={styles.toggleRow}>
-                <Text style={styles.label}>📳 {t('settingsScreen.vibration')}</Text>
-                <Switch
-                  value={settings.vibrationEnabled}
-                  onValueChange={(v) => update({ vibrationEnabled: v })}
-                  trackColor={{ false: Colors.surfaceLight, true: Colors.cyan }}
-                  thumbColor={settings.vibrationEnabled ? Colors.textPrimary : Colors.textMuted}
-                />
-              </View>
-            </View>
+        <Text style={styles.sectionLabel}>{t('settingsScreen.soundVibration').toUpperCase()}</Text>
+        <View style={styles.group}>
+          <View style={[styles.row, styles.rowDivider]}>
+            <Text style={styles.label}>{t('settingsScreen.soundScheme')}</Text>
+            <Text style={styles.valueAccent}>{getSoundSchemeLabel(settings.soundScheme)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t('settingsScreen.vibration')}</Text>
+            <Switch
+              value={settings.vibrationEnabled}
+              onValueChange={(value) => update({ vibrationEnabled: value })}
+              trackColor={{ false: Colors.toggleOff, true: Colors.green }}
+              thumbColor={settings.vibrationEnabled ? Colors.background : Colors.toggleThumbOff}
+            />
+          </View>
+        </View>
 
-            {/* Timer */}
-            <Text style={styles.sectionLabel}>{t('settingsScreen.timerSection')}</Text>
-            <View style={styles.card}>
-              <NumberStepper
-                label={t('settingsScreen.defaultCountdown')}
-                value={settings.defaultCountdown}
-                min={5}
-                max={30}
-                step={5}
-                onChange={(v) => update({ defaultCountdown: v })}
-                formatValue={(v) => `${v}${t('settings.countdownUnit')}`}
-                compact
-              />
-            </View>
+        <Text style={styles.sectionLabel}>{t('settingsScreen.timerSection').toUpperCase()}</Text>
+        <View style={styles.group}>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t('settingsScreen.defaultCountdown')}</Text>
+            <NumberStepper
+              label=""
+              value={settings.defaultCountdown}
+              min={5}
+              max={30}
+              step={5}
+              onChange={(value) => update({ defaultCountdown: value })}
+              formatValue={(value) => `${value}${t('settings.countdownUnit')}`}
+              compact
+            />
+          </View>
+        </View>
 
-            {/* Language */}
-            <Text style={styles.sectionLabel}>{t('settingsScreen.language')}</Text>
-            <View style={styles.card}>
-              <View style={styles.pillRow}>
-                <Pressable
-                  style={[styles.langPill, language === 'uk' && styles.langPillActive]}
-                  onPress={() => handleLanguageSwitch('uk')}
-                >
-                  <Text style={[styles.langText, language === 'uk' && styles.langTextActive]}>
-                    🇺🇦 {t('settingsScreen.languageUkrainian')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.langPill, language === 'en' && styles.langPillActive]}
-                  onPress={() => handleLanguageSwitch('en')}
-                >
-                  <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>
-                    🇬🇧 {t('settingsScreen.languageEnglish')}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
+        <Text style={styles.sectionLabel}>{t('settingsScreen.language').toUpperCase()}</Text>
+        <View style={styles.group}>
+          <View style={styles.segmented}>
+            <Pressable
+              style={[styles.segment, language === 'uk' && styles.segmentActive]}
+              onPress={() => handleLanguageSwitch('uk')}
+            >
+              <Text style={[styles.segmentText, language === 'uk' && styles.segmentTextActive]}>
+                УКР
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.segment, language === 'en' && styles.segmentActive]}
+              onPress={() => handleLanguageSwitch('en')}
+            >
+              <Text style={[styles.segmentText, language === 'en' && styles.segmentTextActive]}>
+                ENG
+              </Text>
+            </Pressable>
+          </View>
+        </View>
 
-            {/* User Presets */}
-            <Text style={styles.sectionLabel}>{t('settingsScreen.myPrograms')}</Text>
-            {allUserPresets.length === 0 ? (
+        <Text style={styles.sectionLabel}>{t('settingsScreen.myPrograms').toUpperCase()}</Text>
+        <View style={styles.group}>
+          {allUserPresets.length === 0 ? (
+            <View style={styles.row}>
               <Text style={styles.emptyText}>{t('settings.noPresets')}</Text>
-            ) : (
-              <View style={styles.card}>
-                {allUserPresets.map((preset) => {
-                  const locale = language === 'uk' ? 'uk' : 'en';
-                  const name = preset.name[locale] || preset.name.en;
-                  return (
-                    <View
-                      key={preset.id}
-                      style={styles.presetItem}
-                    >
-                      <Text style={styles.presetIcon}>{preset.icon}</Text>
-                      <Text style={styles.presetName}>{name}</Text>
-                      <Pressable onPress={() => handleDeletePreset(preset.id, name)}>
-                        <Text style={styles.deleteText}>{t('settings.delete')}</Text>
-                      </Pressable>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-
-            {/* About */}
-            <Text style={styles.sectionLabel}>{t('settingsScreen.about')}</Text>
-            <View style={styles.card}>
-              <View style={[styles.toggleRow, styles.rowDivider]}>
-                <Text style={styles.label}>{t('settingsScreen.version')}</Text>
-                <Text style={styles.aboutValue}>{t('settingsScreen.versionValue', { version: appVersion })}</Text>
-              </View>
-              <Pressable
-                style={styles.toggleRow}
-                onPress={() => {
-                  Linking.openURL('mailto:mishamoskalenko@icloud.com').catch((error) => { console.warn('[settings] openURL failed:', error); });
-                }}
-              >
-                <Text style={styles.label}>{t('settingsScreen.contactDev')}</Text>
-                <Text style={styles.contactLink}>›</Text>
-              </Pressable>
             </View>
+          ) : (
+            allUserPresets.map((preset, index) => {
+              const locale = language === 'uk' ? 'uk' : 'en';
+              const name = preset.name[locale] || preset.name.en;
+              return (
+                <View
+                  key={preset.id}
+                  style={[styles.row, index < allUserPresets.length - 1 && styles.rowDivider]}
+                >
+                  <Text style={styles.label}>{name}</Text>
+                  <Pressable onPress={() => handleDeletePreset(preset.id, name)}>
+                    <Text style={styles.deleteText}>{t('settings.delete')}</Text>
+                  </Pressable>
+                </View>
+              );
+            })
+          )}
+        </View>
+
+        <Text style={styles.sectionLabel}>{t('settingsScreen.about').toUpperCase()}</Text>
+        <View style={styles.group}>
+          <View style={[styles.row, styles.rowDivider]}>
+            <Text style={styles.label}>{t('settingsScreen.version')}</Text>
+            <Text style={styles.valueMuted}>{appVersion}</Text>
+          </View>
+          <Pressable
+            style={styles.row}
+            onPress={() => {
+              Linking.openURL('mailto:mishamoskalenko@icloud.com').catch((error) => {
+                console.warn('[settings] openURL failed:', error);
+              });
+            }}
+          >
+            <Text style={styles.label}>{t('settingsScreen.contactDev')}</Text>
+            <Text style={styles.valueAccent}>→</Text>
+          </Pressable>
         </View>
       </ScrollView>
-
     </View>
   );
 }
@@ -173,111 +180,89 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     paddingHorizontal: Spacing.md,
   },
+  title: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 16,
+    color: Colors.textPrimary,
+    letterSpacing: 1,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
   contentContainer: {
     paddingBottom: 24,
   },
-  title: {
-    fontFamily: FontFamily.heading,
-    fontSize: 18,
-    color: Colors.textPrimary,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
   sectionLabel: {
     fontFamily: FontFamily.body,
-    fontSize: 11,
-    color: Colors.textMuted,
-    marginBottom: 8,
-    marginTop: 16,
-    textTransform: 'uppercase',
+    fontSize: 9,
+    color: Colors.textMeta,
     letterSpacing: 1,
+    marginBottom: 8,
+    marginTop: 14,
   },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
+  group: {
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    overflow: 'hidden',
+    borderColor: Colors.border,
+    marginBottom: 2,
   },
-  label: {
-    fontFamily: FontFamily.body,
-    fontSize: 14,
-    color: Colors.textPrimary,
-  },
-  rowDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceLight,
-  },
-  toggleRow: {
+  row: {
+    minHeight: 52,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    gap: 12,
   },
-  pillRow: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-  },
-  langPill: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.surfaceLight,
-    alignItems: 'center',
-  },
-  langPillActive: {
-    backgroundColor: Colors.cyan,
-  },
-  langText: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 14,
-    color: Colors.textMuted,
-  },
-  langTextActive: {
-    color: Colors.background,
-  },
-  presetItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+  rowDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceLight,
+    borderBottomColor: Colors.hairline,
   },
-  presetIcon: {
-    fontSize: 18,
-    marginRight: Spacing.sm,
-  },
-  presetName: {
+  label: {
     flex: 1,
     fontFamily: FontFamily.body,
-    fontSize: FontSize.sm,
+    fontSize: 13,
     color: Colors.textPrimary,
+  },
+  valueAccent: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 13,
+    color: Colors.green,
+  },
+  valueMuted: {
+    fontFamily: FontFamily.body,
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
+  segmented: {
+    flexDirection: 'row',
+  },
+  segment: {
+    flex: 1,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
+  },
+  segmentActive: {
+    backgroundColor: Colors.green,
+  },
+  segmentText: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 10,
+    color: Colors.textMeta,
+    letterSpacing: 1,
+  },
+  segmentTextActive: {
+    color: Colors.background,
   },
   deleteText: {
     fontFamily: FontFamily.body,
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.pink,
   },
   emptyText: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.sm,
+    fontSize: 13,
     color: Colors.textMuted,
-    marginBottom: Spacing.md,
-  },
-  aboutValue: {
-    fontFamily: FontFamily.body,
-    fontSize: 14,
-    color: Colors.textMuted,
-  },
-  contactLink: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 16,
-    color: Colors.cyan,
   },
 });

@@ -1,6 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRef, useCallback, useEffect } from 'react';
-import { Colors, FontFamily, FontSize, Spacing } from '@/constants/theme';
+import { Colors, FontFamily, Spacing } from '@/constants/theme';
 import { triggerHaptic } from '@/lib/haptics';
 
 interface NumberStepperProps {
@@ -122,27 +122,23 @@ export function NumberStepper({
   }, [getDelay, stopHold]);
 
   const displayValue = formatValue ? formatValue(value) : String(value);
-  const btnSize = compact ? 32 : 40;
 
   return (
     <View style={compact ? styles.containerCompact : styles.container}>
-      {label ? (
-        <Text style={compact ? styles.labelCompact : styles.label}>
-          {label}
-        </Text>
-      ) : null}
+      {label ? <Text style={compact ? styles.labelCompact : styles.label}>{label}</Text> : null}
       <View style={styles.row}>
         <Pressable
           style={[
-            styles.button,
-            { width: btnSize, height: btnSize, borderRadius: btnSize / 2 },
+            styles.buttonTouch,
             value <= min && styles.buttonDisabled,
           ]}
           onPressIn={() => startHold(doDecrement)}
           onPressOut={stopHold}
           disabled={value <= min}
         >
-          <Text style={styles.buttonText}>−</Text>
+          <View style={[styles.buttonBox, value <= min && styles.buttonBoxDisabled]}>
+            <Text style={[styles.buttonText, value <= min && styles.buttonTextDisabled]}>−</Text>
+          </View>
         </Pressable>
         <View style={compact ? styles.valueContainerCompact : styles.valueContainer}>
           <Text style={compact ? styles.valueCompact : styles.value}>
@@ -151,15 +147,16 @@ export function NumberStepper({
         </View>
         <Pressable
           style={[
-            styles.button,
-            { width: btnSize, height: btnSize, borderRadius: btnSize / 2 },
+            styles.buttonTouch,
             value >= max && styles.buttonDisabled,
           ]}
           onPressIn={() => startHold(doIncrement)}
           onPressOut={stopHold}
           disabled={value >= max}
         >
-          <Text style={styles.buttonText}>+</Text>
+          <View style={[styles.buttonBox, value >= max && styles.buttonBoxDisabled]}>
+            <Text style={[styles.buttonText, value >= max && styles.buttonTextDisabled]}>+</Text>
+          </View>
         </Pressable>
       </View>
     </View>
@@ -175,18 +172,17 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    fontSize: 10,
+    color: Colors.textMeta,
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   labelCompact: {
     fontFamily: FontFamily.body,
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    fontSize: 9,
+    color: Colors.textMeta,
     marginBottom: 8,
-    textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -194,39 +190,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 4,
   },
-  button: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceLight,
+  buttonTouch: {
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  buttonBox: {
+    width: 28,
+    height: 28,
+    borderWidth: 1,
+    borderColor: Colors.textMuted,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonBoxDisabled: {
+    borderColor: Colors.border,
+  },
   buttonDisabled: {
-    opacity: 0.3,
+    opacity: 0.45,
   },
   buttonText: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 18,
-    color: Colors.textPrimary,
+    fontSize: 16,
+    color: Colors.green,
+    lineHeight: 18,
+  },
+  buttonTextDisabled: {
+    color: Colors.textMuted,
   },
   valueContainer: {
-    minWidth: 80,
+    minWidth: 74,
     alignItems: 'center',
   },
   valueContainerCompact: {
-    minWidth: 68,
+    minWidth: 64,
     alignItems: 'center',
   },
   value: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 22,
+    fontSize: 18,
     color: Colors.textPrimary,
   },
   valueCompact: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 22,
+    fontSize: 17,
     color: Colors.textPrimary,
   },
 });
