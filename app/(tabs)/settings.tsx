@@ -3,19 +3,18 @@ import {
   Text,
   ScrollView,
   Pressable,
-  Switch,
-  Alert,
   Linking,
   StyleSheet,
 } from 'react-native';
 import Constants from 'expo-constants';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSound } from '@/hooks/use-sound';
 import { getModeSoundLabelKey } from '@/lib/sounds';
-import { TimerMode } from '@/lib/types';
+import { AppSettings, TimerMode } from '@/lib/types';
 import { useSettingsStore } from '@/store/settings-store';
 import { usePresets } from '@/hooks/use-presets';
+import { ConfirmSheet } from '@/components/confirm-sheet';
 import { NumberStepper } from '@/components/number-stepper';
 import { Colors, FontFamily, Spacing } from '@/constants/theme';
 import { t } from '@/lib/i18n';
@@ -30,6 +29,7 @@ export default function SettingsScreen() {
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
   const { userPresets: boxingPresets, deletePreset: deleteBoxing } = usePresets('boxing');
   const { userPresets: tabataPresets, deletePreset: deleteTabata } = usePresets('tabata');
+  const [presetToDelete, setPresetToDelete] = useState<{ id: string; name: string } | null>(null);
   const allUserPresets = useMemo(
     () => [...boxingPresets, ...tabataPresets],
     [boxingPresets, tabataPresets],
@@ -42,23 +42,34 @@ export default function SettingsScreen() {
     [setLanguage],
   );
 
+  const handleHapticLevelChange = useCallback(
+    (level: AppSettings['hapticLevel']) => {
+      void update({ hapticLevel: level });
+    },
+    [update],
+  );
+
   const handleDeletePreset = useCallback(
     (id: string, name: string) => {
-      Alert.alert(t('settings.confirmDelete'), name, [
-        { text: t('settings.cancel'), style: 'cancel' },
-        {
-          text: t('settings.delete'),
-          style: 'destructive',
-          onPress: () => {
-            const preset = allUserPresets.find((item) => item.id === id);
-            if (preset?.mode === 'boxing') deleteBoxing(id);
-            else if (preset?.mode === 'tabata') deleteTabata(id);
-          },
-        },
-      ]);
+      setPresetToDelete({ id, name });
     },
-    [allUserPresets, deleteBoxing, deleteTabata],
+    [],
   );
+
+  const confirmDeletePreset = useCallback(() => {
+    if (!presetToDelete) {
+      return;
+    }
+
+    const preset = allUserPresets.find((item) => item.id === presetToDelete.id);
+    if (preset?.mode === 'boxing') {
+      deleteBoxing(presetToDelete.id);
+    } else if (preset?.mode === 'tabata') {
+      deleteTabata(presetToDelete.id);
+    }
+
+    setPresetToDelete(null);
+  }, [allUserPresets, deleteBoxing, deleteTabata, presetToDelete]);
 
   const handleSoundPreview = useCallback(
     (mode: TimerMode) => {
@@ -77,6 +88,20 @@ export default function SettingsScreen() {
       ]}
     >
       <Text style={styles.title}>{t('settingsScreen.title')}</Text>
+
+      <ConfirmSheet
+        visible={!!presetToDelete}
+        title={
+          presetToDelete
+            ? `${t('settings.delete')} "${presetToDelete.name}"?`
+            : t('settings.confirmDelete')
+        }
+        confirmLabel={t('settings.delete').toUpperCase()}
+        cancelLabel={t('settings.cancel').toUpperCase()}
+        confirmTone="danger"
+        onConfirm={confirmDeletePreset}
+        onCancel={() => setPresetToDelete(null)}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -109,13 +134,28 @@ export default function SettingsScreen() {
             </View>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>{t('settingsScreen.vibration')}</Text>
-            <Switch
-              value={settings.vibrationEnabled}
-              onValueChange={(value) => update({ vibrationEnabled: value })}
-              trackColor={{ false: Colors.toggleOff, true: Colors.green }}
-              thumbColor={settings.vibrationEnabled ? Colors.background : Colors.toggleThumbOff}
-            />
+            <Text style={styles.label}>{t('settingsScreen.hapticFeedback')}</Text>
+            <View style={styles.hapticSegmented}>
+              {(['off', 'light', 'strong'] as const).map((level) => (
+                <Pressable
+                  key={level}
+                  style={[
+                    styles.hapticSegment,
+                    settings.hapticLevel === level && styles.hapticSegmentActive,
+                  ]}
+                  onPress={() => handleHapticLevelChange(level)}
+                >
+                  <Text
+                    style={[
+                      styles.hapticSegmentText,
+                      settings.hapticLevel === level && styles.hapticSegmentTextActive,
+                    ]}
+                  >
+                    {t(`settingsScreen.${level}`)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         </View>
 
@@ -281,6 +321,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.green,
     letterSpacing: 0.4,
+  },
+  hapticSegmented: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  hapticSegment: {
+    minWidth: 58,
+    minHeight: 36,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
+  },
+  hapticSegmentActive: {
+    backgroundColor: Colors.green,
+  },
+  hapticSegmentText: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 10,
+    color: Colors.textMeta,
+    letterSpacing: 0.8,
+  },
+  hapticSegmentTextActive: {
+    color: Colors.background,
   },
   segmented: {
     flexDirection: 'row',

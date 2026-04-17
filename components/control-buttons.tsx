@@ -8,17 +8,21 @@ import { triggerHaptic } from '@/lib/haptics';
 interface ControlButtonsProps {
   isPaused: boolean;
   isFinished: boolean;
+  isLocked?: boolean;
   onPauseResume: () => void;
   onStop: () => void;
   onHome: () => void;
+  onLockedPress?: () => void;
 }
 
 export function ControlButtons({
   isPaused,
   isFinished,
+  isLocked = false,
   onPauseResume,
   onStop,
   onHome,
+  onLockedPress,
 }: ControlButtonsProps) {
   useSettingsStore((s) => s.language);
 
@@ -51,8 +55,8 @@ export function ControlButtons({
   return (
     <View style={styles.container}>
       <Pressable
-        style={styles.stopButton}
-        onPress={handleStopPress}
+        style={[styles.stopButton, isLocked && styles.stopButtonLocked]}
+        onPress={isLocked ? onLockedPress : handleStopPress}
       >
         <View style={styles.stopGlyph} />
       </Pressable>
@@ -97,6 +101,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  stopButtonLocked: {
+    opacity: 0.42,
   },
   stopGlyph: {
     width: 16,

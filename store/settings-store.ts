@@ -5,6 +5,10 @@ import { AppSettings } from '@/lib/types';
 
 const SETTINGS_KEY = 'app_settings';
 
+interface StoredSettings extends Partial<AppSettings> {
+  vibrationEnabled?: boolean;
+}
+
 function detectLanguage(): 'uk' | 'en' {
   const code = getLocales()[0]?.languageCode ?? 'en';
   return code === 'uk' ? 'uk' : 'en';
@@ -12,7 +16,7 @@ function detectLanguage(): 'uk' | 'en' {
 
 const defaults: AppSettings = {
   language: detectLanguage(),
-  vibrationEnabled: true,
+  hapticLevel: 'strong',
   defaultCountdown: 5,
 };
 
@@ -26,7 +30,10 @@ function clampToStep(value: number, min: number, max: number, step: number): num
 function normalizeSettings(settings: AppSettings): AppSettings {
   return {
     language: settings.language === 'uk' ? 'uk' : 'en',
-    vibrationEnabled: settings.vibrationEnabled,
+    hapticLevel:
+      settings.hapticLevel === 'off' || settings.hapticLevel === 'light'
+        ? settings.hapticLevel
+        : 'strong',
     defaultCountdown: clampToStep(settings.defaultCountdown, 5, 30, 5),
   };
 }
@@ -48,9 +55,20 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   load: async () => {
     try {
       const raw = await AsyncStorage.getItem(SETTINGS_KEY);
+      const parsed = raw ? (JSON.parse(raw) as StoredSettings) : null;
+      const legacyHapticLevel =
+        typeof parsed?.hapticLevel === 'string'
+          ? parsed.hapticLevel
+          : parsed?.vibrationEnabled === false
+            ? 'off'
+            : defaults.hapticLevel;
       const nextSettings = normalizeSettings(
-        raw
-          ? { ...defaults, ...(JSON.parse(raw) as Partial<AppSettings>) }
+        parsed
+          ? {
+              ...defaults,
+              ...parsed,
+              hapticLevel: legacyHapticLevel,
+            }
           : { ...defaults },
       );
       set({ settings: nextSettings, language: nextSettings.language, loaded: true });

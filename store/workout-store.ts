@@ -6,6 +6,7 @@ import {
   TimerState,
   TimerMode,
   SessionResult,
+  PersistedSession,
 } from '@/lib/types';
 
 const LAST_CONFIGS_KEY = 'workout_last_configs';
@@ -31,9 +32,13 @@ const initialTimerState: TimerState = {
   currentRound: 1,
   totalRounds: 0,
   secondsRemaining: 0,
+  phaseRemainingMs: 0,
+  phaseDurationMs: 0,
   totalElapsedSeconds: 0,
+  totalElapsedMs: 0,
   isPaused: false,
   isRunning: false,
+  updatedAt: null,
 };
 
 interface WorkoutStore {
@@ -56,6 +61,10 @@ interface WorkoutStore {
   timerState: TimerState;
   setTimerState: (state: Partial<TimerState>) => void;
   resetTimerState: () => void;
+  recoverableSession: PersistedSession | null;
+  setRecoverableSession: (session: PersistedSession | null) => void;
+  pendingResumeSession: PersistedSession | null;
+  setPendingResumeSession: (session: PersistedSession | null) => void;
 }
 
 function sanitizeDuration(value: number, min: number, max: number): number {
@@ -175,4 +184,8 @@ export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
   setTimerState: (partial) =>
     set((s) => ({ timerState: { ...s.timerState, ...partial } })),
   resetTimerState: () => set({ timerState: { ...initialTimerState } }),
+  recoverableSession: null,
+  setRecoverableSession: (session) => set({ recoverableSession: session }),
+  pendingResumeSession: null,
+  setPendingResumeSession: (session) => set({ pendingResumeSession: session }),
 }));

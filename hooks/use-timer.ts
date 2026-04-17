@@ -1,8 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useWorkoutStore } from '@/store/workout-store';
-import { WorkoutConfig, TimerPhase } from '@/lib/types';
-import { advanceTimerState, getNextPhase } from '@/lib/timer-transition';
+import { TimerState, WorkoutConfig, TimerPhase } from '@/lib/types';
+import { advanceTimerState, getPhaseDurationMs } from '@/lib/timer-transition';
+
+const FRAME_COMMIT_GRANULARITY_MS = 100;
 
 interface UseTimerCallbacks {
   onPhaseChange: (phase: TimerPhase, round: number) => void;
@@ -10,183 +12,296 @@ interface UseTimerCallbacks {
   onFinish: () => void;
 }
 
+function buildStateSnapshot(
+  base: TimerState,
+  next: ReturnType<typeof advanceTimerState>,
+  updatedAt: number,
+): TimerState {
+  return {
+    ...base,
+    phase: next.phase,
+    currentRound: next.currentRound,
+    secondsRemaining: next.secondsRemaining,
+    phaseRemainingMs: next.phaseRemainingMs,
+    phaseDurationMs: next.phaseDurationMs,
+    totalElapsedSeconds: next.totalElapsedSeconds,
+    totalElapsedMs: next.totalElapsedMs,
+    isPaused: false,
+    isRunning: next.isRunning,
+    updatedAt,
+  };
+}
+
+function getCommitBucket(phaseRemainingMs: number): number {
+  return Math.floor(Math.max(0, phaseRemainingMs) / FRAME_COMMIT_GRANULARITY_MS);
+}
+
 export function useTimer(config: WorkoutConfig, callbacks: UseTimerCallbacks) {
   const timerState = useWorkoutStore((s) => s.timerState);
   const setTimerState = useWorkoutStore((s) => s.setTimerState);
   const resetTimerState = useWorkoutStore((s) => s.resetTimerState);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const frameRef = useRef<number | null>(null);
   const callbacksRef = useRef(callbacks);
   callbacksRef.current = callbacks;
 
-  // Track when app goes to background for drift correction
-  const backgroundTimeRef = useRef<number | null>(null);
-  const lastTimerUpdateRef = useRef(Date.now());
   const configRef = useRef(config);
   configRef.current = config;
 
-  // Use refs to avoid stale closures in the tick loop
   const stateRef = useRef(timerState);
   stateRef.current = timerState;
 
+  const runtimeBaseStateRef = useRef<TimerState | null>(null);
+  const runtimeStartedAtRef = useRef<number>(0);
+  const backgroundStateRef = useRef<TimerState | null>(null);
+  const backgroundStartedAtRef = useRef<number | null>(null);
+  const lastCommitBucketRef = useRef<number>(-1);
+  const lastTickSecondRef = useRef<number | null>(null);
+
   const clearTimer = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+    if (frameRef.current !== null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
     }
   }, []);
 
-  const tick = useCallback(() => {
-    const state = stateRef.current;
-    if (state.isPaused || !state.isRunning || state.phase === 'finished') {
-      return;
+  const commitState = useCallback(
+    (nextState: TimerState) => {
+      stateRef.current = nextState;
+      setTimerState(nextState);
+    },
+    [setTimerState],
+  );
+
+  const syncRuntime = useCallback((nextState: TimerState, now: number) => {
+    runtimeBaseStateRef.current = nextState;
+    runtimeStartedAtRef.current = now;
+    lastCommitBucketRef.current = getCommitBucket(nextState.phaseRemainingMs);
+    lastTickSecondRef.current = nextState.secondsRemaining;
+  }, []);
+
+  const readCurrentState = useCallback((now: number) => {
+    const runtimeBase = runtimeBaseStateRef.current ?? stateRef.current;
+
+    if (!runtimeBase.isRunning || runtimeBase.isPaused || runtimeBase.phase === 'finished') {
+      return {
+        nextState: runtimeBase,
+        didChangePhase: false,
+        didFinish: runtimeBase.phase === 'finished',
+      };
     }
 
-    const newSeconds = state.secondsRemaining - 1;
-    const newElapsed = state.totalElapsedSeconds + 1;
-    lastTimerUpdateRef.current = Date.now();
+    const elapsedMs = Math.max(0, now - runtimeStartedAtRef.current);
+    const next = advanceTimerState(configRef.current, runtimeBase, elapsedMs);
 
-    if (newSeconds <= 0) {
-      // Phase transition
-      const next = getNextPhase(configRef.current, state.phase, state.currentRound);
-      setTimerState({
-        phase: next.phase,
-        secondsRemaining: next.seconds,
-        currentRound: next.round,
-        totalElapsedSeconds: newElapsed,
-        isRunning: next.phase !== 'finished',
-      });
+    return {
+      nextState: buildStateSnapshot(runtimeBase, next, now),
+      didChangePhase: next.didChangePhase,
+      didFinish: next.didFinish,
+    };
+  }, []);
 
-      if (next.phase === 'finished') {
-        callbacksRef.current.onFinish();
-      } else {
-        callbacksRef.current.onPhaseChange(next.phase, next.round);
-      }
-    } else {
-      setTimerState({
-        secondsRemaining: newSeconds,
-        totalElapsedSeconds: newElapsed,
-      });
-      callbacksRef.current.onTick(newSeconds, state.phase, state.currentRound);
-    }
-  }, [setTimerState]);
-
-  // Drift-corrected interval using setTimeout chain
   const startTickLoop = useCallback(() => {
     clearTimer();
-    let expected = Date.now() + 1000;
 
-    function step() {
-      const state = stateRef.current;
-      if (!state.isRunning || state.phase === 'finished' || state.isPaused) {
-        timeoutRef.current = null;
+    const step = () => {
+      const current = stateRef.current;
+      if (!current.isRunning || current.isPaused || current.phase === 'finished') {
+        frameRef.current = null;
         return;
       }
 
-      tick();
+      const now = Date.now();
+      const { nextState, didChangePhase, didFinish } = readCurrentState(now);
+      const nextBucket = getCommitBucket(nextState.phaseRemainingMs);
+      const didChangeSecond = nextState.secondsRemaining !== lastTickSecondRef.current;
+      const shouldCommit =
+        didChangePhase ||
+        didFinish ||
+        didChangeSecond ||
+        nextBucket !== lastCommitBucketRef.current;
 
-      // Drift correction
-      const drift = Date.now() - expected;
-      expected += 1000;
-      const nextDelay = Math.max(0, 1000 - drift);
-      timeoutRef.current = setTimeout(step, nextDelay);
-    }
+      if (shouldCommit) {
+        lastCommitBucketRef.current = nextBucket;
+        lastTickSecondRef.current = nextState.secondsRemaining;
+        commitState(nextState);
+      }
 
-    timeoutRef.current = setTimeout(step, 1000);
-  }, [clearTimer, tick]);
+      if (didFinish) {
+        syncRuntime(nextState, now);
+        callbacksRef.current.onFinish();
+        frameRef.current = null;
+        return;
+      }
 
-  // AppState handler for background/foreground
+      if (didChangePhase) {
+        syncRuntime(nextState, now);
+        callbacksRef.current.onPhaseChange(nextState.phase, nextState.currentRound);
+      } else if (didChangeSecond) {
+        callbacksRef.current.onTick(
+          nextState.secondsRemaining,
+          nextState.phase,
+          nextState.currentRound,
+        );
+      }
+
+      frameRef.current = requestAnimationFrame(step);
+    };
+
+    frameRef.current = requestAnimationFrame(step);
+  }, [clearTimer, commitState, readCurrentState, syncRuntime]);
+
   useEffect(() => {
-    const handleAppState = (nextState: AppStateStatus) => {
-      const state = stateRef.current;
-      if (nextState === 'background' || nextState === 'inactive') {
-        backgroundTimeRef.current = Date.now();
-      } else if (nextState === 'active' && backgroundTimeRef.current) {
-        // Fast-forward timer by elapsed background time
-        if (state.isRunning && !state.isPaused && state.phase !== 'finished') {
-          const elapsed = Math.floor((Date.now() - lastTimerUpdateRef.current) / 1000);
+    const handleAppState = (nextAppState: AppStateStatus) => {
+      const current = stateRef.current;
 
-          if (elapsed <= 2) {
-            backgroundTimeRef.current = null;
-            return;
-          }
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        if (current.isRunning && !current.isPaused && current.phase !== 'finished') {
+          const now = Date.now();
+          const { nextState } = readCurrentState(now);
 
+          backgroundStateRef.current = nextState;
+          backgroundStartedAtRef.current = now;
+          commitState(nextState);
+          syncRuntime(nextState, now);
           clearTimer();
-          const nextState = advanceTimerState(configRef.current, state, elapsed);
-
-          if (nextState.didFinish) {
-            setTimerState({
-              phase: 'finished',
-              secondsRemaining: 0,
-              currentRound: nextState.currentRound,
-              totalElapsedSeconds: nextState.totalElapsedSeconds,
-              isRunning: false,
-            });
-            lastTimerUpdateRef.current = Date.now();
-            callbacksRef.current.onFinish();
-          } else {
-            setTimerState({
-              phase: nextState.phase,
-              secondsRemaining: nextState.secondsRemaining,
-              currentRound: nextState.currentRound,
-              totalElapsedSeconds: nextState.totalElapsedSeconds,
-            });
-            lastTimerUpdateRef.current = Date.now();
-            if (nextState.didChangePhase) {
-              callbacksRef.current.onPhaseChange(nextState.phase, nextState.currentRound);
-            }
-            startTickLoop();
-          }
         }
-        backgroundTimeRef.current = null;
+        return;
+      }
+
+      if (
+        nextAppState === 'active' &&
+        backgroundStateRef.current &&
+        backgroundStartedAtRef.current !== null
+      ) {
+        const backgroundState = backgroundStateRef.current;
+        const elapsedMs = Math.max(0, Date.now() - backgroundStartedAtRef.current);
+        const next = advanceTimerState(configRef.current, backgroundState, elapsedMs);
+        const now = Date.now();
+        const nextState = buildStateSnapshot(backgroundState, next, now);
+
+        commitState(nextState);
+        syncRuntime(nextState, now);
+
+        backgroundStateRef.current = null;
+        backgroundStartedAtRef.current = null;
+
+        if (next.didFinish) {
+          callbacksRef.current.onFinish();
+          return;
+        }
+
+        if (next.didChangePhase) {
+          callbacksRef.current.onPhaseChange(nextState.phase, nextState.currentRound);
+        }
+
+        startTickLoop();
       }
     };
 
     const sub = AppState.addEventListener('change', handleAppState);
     return () => sub.remove();
-  }, [clearTimer, setTimerState, startTickLoop]);
+  }, [clearTimer, commitState, readCurrentState, startTickLoop, syncRuntime]);
 
   const start = useCallback(() => {
     clearTimer();
     resetTimerState();
-    setTimerState({
+
+    const now = Date.now();
+    const phaseDurationMs = getPhaseDurationMs(config, 'countdown');
+    const nextState: TimerState = {
       phase: 'countdown',
-      secondsRemaining: config.countdownDuration,
       currentRound: 1,
       totalRounds: config.rounds,
+      secondsRemaining: config.countdownDuration,
+      phaseRemainingMs: phaseDurationMs,
+      phaseDurationMs,
       totalElapsedSeconds: 0,
+      totalElapsedMs: 0,
       isPaused: false,
       isRunning: true,
-    });
-    lastTimerUpdateRef.current = Date.now();
+      updatedAt: now,
+    };
+
+    commitState(nextState);
+    syncRuntime(nextState, now);
+    backgroundStateRef.current = null;
+    backgroundStartedAtRef.current = null;
     callbacksRef.current.onPhaseChange('countdown', 1);
-    // Small delay to let state settle before starting tick loop
-    setTimeout(() => startTickLoop(), 50);
-  }, [clearTimer, config, resetTimerState, setTimerState, startTickLoop]);
+    startTickLoop();
+  }, [clearTimer, commitState, config, resetTimerState, startTickLoop, syncRuntime]);
 
   const pause = useCallback(() => {
-    clearTimer();
-    setTimerState({ isPaused: true });
-  }, [clearTimer, setTimerState]);
-
-  const resume = useCallback(() => {
-    if (!stateRef.current.isRunning || stateRef.current.phase === 'finished') {
+    const current = stateRef.current;
+    if (!current.isRunning || current.isPaused || current.phase === 'finished') {
       return;
     }
-    setTimerState({ isPaused: false });
-    lastTimerUpdateRef.current = Date.now();
+
+    const now = Date.now();
+    const { nextState } = readCurrentState(now);
+
+    clearTimer();
+    const pausedState: TimerState = {
+      ...nextState,
+      isPaused: true,
+      updatedAt: now,
+    };
+
+    commitState(pausedState);
+    syncRuntime(pausedState, now);
+  }, [clearTimer, commitState, readCurrentState, syncRuntime]);
+
+  const resume = useCallback(() => {
+    const current = stateRef.current;
+    if (!current.isRunning || !current.isPaused || current.phase === 'finished') {
+      return;
+    }
+
+    const now = Date.now();
+    const resumedState: TimerState = {
+      ...current,
+      isPaused: false,
+      updatedAt: now,
+    };
+
+    commitState(resumedState);
+    syncRuntime(resumedState, now);
     startTickLoop();
-  }, [setTimerState, startTickLoop]);
+  }, [commitState, startTickLoop, syncRuntime]);
+
+  const restore = useCallback(
+    (snapshot: TimerState) => {
+      clearTimer();
+
+      const now = Date.now();
+      const restoredState: TimerState = {
+        ...snapshot,
+        updatedAt: now,
+      };
+
+      commitState(restoredState);
+      syncRuntime(restoredState, now);
+
+      if (restoredState.isRunning && !restoredState.isPaused && restoredState.phase !== 'finished') {
+        startTickLoop();
+      }
+    },
+    [clearTimer, commitState, startTickLoop, syncRuntime],
+  );
 
   const stop = useCallback(() => {
     clearTimer();
-    lastTimerUpdateRef.current = Date.now();
+    backgroundStateRef.current = null;
+    backgroundStartedAtRef.current = null;
+    runtimeBaseStateRef.current = null;
+    lastCommitBucketRef.current = -1;
+    lastTickSecondRef.current = null;
     resetTimerState();
+    stateRef.current = useWorkoutStore.getState().timerState;
   }, [clearTimer, resetTimerState]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => clearTimer();
   }, [clearTimer]);
 
-  return { start, pause, resume, stop, timerState };
+  return { start, pause, resume, restore, stop, timerState };
 }

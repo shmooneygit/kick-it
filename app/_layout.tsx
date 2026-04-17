@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Constants from 'expo-constants';
 import * as SplashScreen from 'expo-splash-screen';
 import {
@@ -17,8 +18,10 @@ import {
 } from '@expo-google-fonts/exo-2';
 import { Colors } from '@/constants/theme';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { ResumeWorkoutBanner } from '@/components/resume-workout-banner';
 import i18n from '@/lib/i18n';
-import { configureAudioModeOnce } from '@/hooks/use-sound';
+import { loadPersistedSession } from '@/lib/session-persistence';
+import { prepareAudioOnce } from '@/hooks/use-sound';
 import { useSettingsStore } from '@/store/settings-store';
 import { useHistoryStore } from '@/store/history-store';
 import { useAchievementStore } from '@/store/achievement-store';
@@ -58,9 +61,9 @@ export default function RootLayout() {
       );
     }
 
-    configureAudioModeOnce()
+    prepareAudioOnce()
       .catch((error) => {
-        console.warn('Audio mode initialization failed:', error);
+        console.warn('Audio initialization failed:', error);
       })
       .finally(() => {
         setAudioReady(true);
@@ -70,6 +73,9 @@ export default function RootLayout() {
     loadHistory();
     loadAchievements();
     void useWorkoutStore.getState().loadLastConfigs();
+    void loadPersistedSession().then((session) => {
+      useWorkoutStore.getState().setRecoverableSession(session);
+    });
   }, [loadSettings, loadHistory, loadAchievements]);
 
   const onLayoutRootView = useCallback(async () => {
@@ -81,7 +87,7 @@ export default function RootLayout() {
   if (!isReady) return null;
 
   return (
-    <View
+    <GestureHandlerRootView
       key={language}
       style={{ flex: 1, backgroundColor: Colors.background }}
       onLayout={onLayoutRootView}
@@ -117,7 +123,8 @@ export default function RootLayout() {
           />
         </Stack>
       </ErrorBoundary>
+      <ResumeWorkoutBanner />
       <StatusBar style="light" />
-    </View>
+    </GestureHandlerRootView>
   );
 }

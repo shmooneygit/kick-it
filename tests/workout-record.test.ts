@@ -17,9 +17,13 @@ const timerState: TimerState = {
   currentRound: 2,
   totalRounds: 3,
   secondsRemaining: 30,
+  phaseRemainingMs: 30000,
+  phaseDurationMs: 60000,
   totalElapsedSeconds: 420,
+  totalElapsedMs: 420000,
   isPaused: false,
   isRunning: true,
+  updatedAt: 0,
 };
 
 test('createSessionResult counts completed rounds from timer state', () => {

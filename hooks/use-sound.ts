@@ -16,7 +16,16 @@ import {
 } from '@/lib/sounds';
 
 const KEEP_ALIVE_ASSET = require('../assets/keepalive/silence.wav') as SoundAsset;
+const PRELOADED_POOL_SIZE = 4;
+
+interface SoundPool {
+  cursor: number;
+  sounds: Audio.Sound[];
+}
+
 let audioModePromise: Promise<void> | null = null;
+let soundBankPromise: Promise<void> | null = null;
+const soundPools = new Map<SoundAsset, SoundPool>();
 
 export function configureAudioModeOnce(): Promise<void> {
   if (!audioModePromise) {
@@ -36,33 +45,62 @@ export function configureAudioModeOnce(): Promise<void> {
   return audioModePromise;
 }
 
+async function createSoundPool(asset: SoundAsset): Promise<void> {
+  if (soundPools.has(asset)) {
+    return;
+  }
+
+  const sounds = await Promise.all(
+    Array.from({ length: PRELOADED_POOL_SIZE }, async () => {
+      const { sound } = await Audio.Sound.createAsync(asset, {
+        shouldPlay: false,
+        progressUpdateIntervalMillis: 60000,
+      });
+
+      return sound;
+    }),
+  );
+
+  soundPools.set(asset, {
+    cursor: 0,
+    sounds,
+  });
+}
+
+export function prepareAudioOnce(): Promise<void> {
+  if (!soundBankPromise) {
+    soundBankPromise = (async () => {
+      await configureAudioModeOnce();
+      await Asset.loadAsync([...preloadedSoundAssets, KEEP_ALIVE_ASSET]);
+      await Promise.all(preloadedSoundAssets.map((asset) => createSoundPool(asset)));
+    })().catch((error) => {
+      soundBankPromise = null;
+      throw error;
+    });
+  }
+
+  return soundBankPromise;
+}
+
+async function playPreloadedAsset(asset: SoundAsset) {
+  await prepareAudioOnce();
+
+  const pool = soundPools.get(asset);
+  if (!pool) {
+    throw new Error('Sound pool was not initialized');
+  }
+
+  const sound = pool.sounds[pool.cursor];
+  pool.cursor = (pool.cursor + 1) % pool.sounds.length;
+
+  await sound.replayAsync();
+}
+
 export function useSound() {
-  const activeSoundsRef = useRef<Set<Audio.Sound>>(new Set());
   const patternTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const keepAliveSoundRef = useRef<Audio.Sound | null>(null);
   const keepAliveRequestedRef = useRef(false);
   const mountedRef = useRef(true);
-
-  const unloadSound = useCallback((sound: Audio.Sound) => {
-    activeSoundsRef.current.delete(sound);
-    sound.setOnPlaybackStatusUpdate(null);
-    sound.unloadAsync().catch(() => {});
-  }, []);
-
-  const playClip = useCallback(
-    async (asset: SoundAsset) => {
-      await (audioModePromise ?? Promise.resolve());
-      const { sound } = await Audio.Sound.createAsync(asset);
-      activeSoundsRef.current.add(sound);
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          unloadSound(sound);
-        }
-      });
-      await sound.playAsync();
-    },
-    [unloadSound],
-  );
 
   const stopKeepAlive = useCallback(async () => {
     keepAliveRequestedRef.current = false;
@@ -86,7 +124,7 @@ export function useSound() {
     if (keepAliveSoundRef.current) return;
 
     try {
-      await (audioModePromise ?? Promise.resolve());
+      await prepareAudioOnce();
 
       const { sound } = await Audio.Sound.createAsync(KEEP_ALIVE_ASSET, {
         shouldPlay: true,
@@ -109,8 +147,6 @@ export function useSound() {
 
   useEffect(() => {
     mountedRef.current = true;
-    const activeSounds = activeSoundsRef.current;
-    void Asset.loadAsync([...preloadedSoundAssets, KEEP_ALIVE_ASSET]);
 
     return () => {
       mountedRef.current = false;
@@ -123,32 +159,28 @@ export function useSound() {
         keepAliveSound.stopAsync().catch(() => {});
         keepAliveSound.unloadAsync().catch(() => {});
       }
-      activeSounds.forEach((sound) => unloadSound(sound));
     };
-  }, [unloadSound]);
+  }, []);
 
-  const queuePattern = useCallback(
-    async (asset: SoundAsset, repeat: number) => {
-      await playClip(asset);
+  const queuePattern = useCallback(async (asset: SoundAsset, repeat: number) => {
+    await playPreloadedAsset(asset);
 
-      for (let index = 1; index < repeat; index += 1) {
-        const timeout = setTimeout(() => {
-          patternTimeoutsRef.current = patternTimeoutsRef.current.filter(
-            (value) => value !== timeout,
-          );
+    for (let index = 1; index < repeat; index += 1) {
+      const timeout = setTimeout(() => {
+        patternTimeoutsRef.current = patternTimeoutsRef.current.filter(
+          (value) => value !== timeout,
+        );
 
-          if (mountedRef.current) {
-            playClip(asset).catch((error) => {
-              console.warn('Sound playback failed:', error);
-            });
-          }
-        }, 150 * index);
+        if (mountedRef.current) {
+          playPreloadedAsset(asset).catch((error) => {
+            console.warn('Sound playback failed:', error);
+          });
+        }
+      }, 150 * index);
 
-        patternTimeoutsRef.current.push(timeout);
-      }
-    },
-    [playClip],
-  );
+      patternTimeoutsRef.current.push(timeout);
+    }
+  }, []);
 
   const play = useCallback(
     async (
@@ -171,13 +203,13 @@ export function useSound() {
       const asset = getModePreviewAsset(mode);
 
       try {
-        await playClip(asset);
+        await playPreloadedAsset(asset);
       } catch (error) {
         console.warn('Sound preview failed:', error);
         throw error;
       }
     },
-    [playClip],
+    [],
   );
 
   return { play, previewMode, startKeepAlive, stopKeepAlive };

@@ -1,7 +1,15 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, Href, useLocalSearchParams } from 'expo-router';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useHistoryStore } from '@/store/history-store';
 import { useAchievementStore } from '@/store/achievement-store';
@@ -24,6 +32,89 @@ function badgeText(language: 'uk' | 'en', badge: BadgeDef): string {
 
 function getResultHeading(wasCompleted: boolean): string {
   return wasCompleted ? t('result.title') : t('result.stoppedTitle');
+}
+
+function easeOutCubic(progress: number): number {
+  return 1 - (1 - progress) ** 3;
+}
+
+function useCountUp(target: number, delayMs: number) {
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    let frameId = 0;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const durationMs = 600;
+
+    timeoutId = setTimeout(() => {
+      const startedAt = Date.now();
+
+      const tick = () => {
+        const progress = Math.min(1, (Date.now() - startedAt) / durationMs);
+        setValue(Math.round(target * easeOutCubic(progress)));
+
+        if (progress < 1) {
+          frameId = requestAnimationFrame(tick);
+        }
+      };
+
+      frameId = requestAnimationFrame(tick);
+    }, delayMs);
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+    };
+  }, [delayMs, target]);
+
+  return value;
+}
+
+interface ResultMetricCardProps {
+  delayMs: number;
+  label: string;
+  target: number;
+  formatValue?: (value: number) => string;
+  accent?: boolean;
+}
+
+function ResultMetricCard({
+  delayMs,
+  label,
+  target,
+  formatValue = String,
+  accent = false,
+}: ResultMetricCardProps) {
+  const entered = useSharedValue(0);
+  const countedValue = useCountUp(target, delayMs);
+
+  useEffect(() => {
+    entered.value = withDelay(
+      delayMs,
+      withTiming(1, {
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+      }),
+    );
+  }, [delayMs, entered]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: entered.value,
+    transform: [{ translateY: (1 - entered.value) * 18 }],
+  }));
+
+  return (
+    <Animated.View style={[styles.statCell, animatedStyle]}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.statValue, accent && styles.statValueAccent]}>
+        {formatValue(countedValue)}
+      </Text>
+    </Animated.View>
+  );
 }
 
 export default function ResultScreen() {
@@ -132,6 +223,22 @@ export default function ResultScreen() {
     : format(new Date(), 'dd.MM.yyyy HH:mm');
   const roundsLabel =
     sessionResult.mode === 'boxing' ? t('result.roundsCompleted') : t('result.intervalsCompleted');
+  const statusScale = useSharedValue(0.72);
+
+  useEffect(() => {
+    statusScale.value = withDelay(
+      80,
+      withSpring(1, {
+        damping: 10,
+        stiffness: 180,
+        mass: 0.75,
+      }),
+    );
+  }, [statusScale]);
+
+  const statusAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: statusScale.value }],
+  }));
 
   return (
     <View
@@ -141,9 +248,9 @@ export default function ResultScreen() {
       ]}
     >
       <View style={styles.content}>
-        <View style={[styles.statusBox, { borderColor: accent }]}>
+        <Animated.View style={[styles.statusBox, { borderColor: accent }, statusAnimatedStyle]}>
           <Text style={[styles.statusMark, { color: accent }]}>✓</Text>
-        </View>
+        </Animated.View>
 
         <Text style={styles.heading}>{getResultHeading(sessionResult.wasCompleted)}</Text>
         <Text style={styles.dateText}>{dateLabel}</Text>
@@ -155,20 +262,24 @@ export default function ResultScreen() {
           </View>
 
           <View style={styles.statsGrid}>
-            <View style={styles.statCell}>
-              <Text style={styles.statLabel}>{roundsLabel.toUpperCase()}</Text>
-              <Text style={styles.statValue}>{sessionResult.completedRounds}</Text>
-            </View>
-            <View style={styles.statCell}>
-              <Text style={styles.statLabel}>{t('settings.restDuration').toUpperCase()}</Text>
-              <Text style={styles.statValue}>{formatTime(resultConfig.restDuration)}</Text>
-            </View>
-            <View style={styles.statCell}>
-              <Text style={styles.statLabel}>{t('result.totalTime').toUpperCase()}</Text>
-              <Text style={[styles.statValue, styles.statValueAccent]}>
-                {formatTime(sessionResult.totalDuration)}
-              </Text>
-            </View>
+            <ResultMetricCard
+              delayMs={0}
+              label={roundsLabel.toUpperCase()}
+              target={sessionResult.completedRounds}
+            />
+            <ResultMetricCard
+              delayMs={80}
+              label={t('settings.restDuration').toUpperCase()}
+              target={resultConfig.restDuration}
+              formatValue={formatTime}
+            />
+            <ResultMetricCard
+              delayMs={160}
+              label={t('result.totalTime').toUpperCase()}
+              target={sessionResult.totalDuration}
+              formatValue={formatTime}
+              accent
+            />
           </View>
         </View>
 
@@ -269,6 +380,11 @@ const styles = StyleSheet.create({
   },
   statCell: {
     flex: 1,
+    minHeight: 92,
+    borderWidth: 1,
+    borderColor: Colors.hairline,
+    padding: 12,
+    justifyContent: 'space-between',
   },
   statLabel: {
     fontFamily: FontFamily.body,

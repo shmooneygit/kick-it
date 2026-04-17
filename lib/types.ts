@@ -45,6 +45,19 @@ export interface SessionResult {
   wasCompleted: boolean;
 }
 
+export interface PersistedSession {
+  programId: string | null;
+  programName?: string;
+  config: WorkoutConfig;
+  currentRound: number;
+  totalRounds: number;
+  phaseTimeRemainingMs: number;
+  phase: Exclude<TimerPhase, 'finished'>;
+  totalElapsedMs: number;
+  timestamp: number;
+  isPaused: boolean;
+}
+
 export interface UserStats {
   totalWorkouts: number;
   totalRounds: number;
@@ -76,13 +89,17 @@ export interface TimerState {
   currentRound: number;
   totalRounds: number;
   secondsRemaining: number;
+  phaseRemainingMs: number;
+  phaseDurationMs: number;
   totalElapsedSeconds: number;
+  totalElapsedMs: number;
   isPaused: boolean;
   isRunning: boolean;
+  updatedAt: number | null;
 }
 
 export interface AppSettings {
   language: 'uk' | 'en';
-  vibrationEnabled: boolean;
+  hapticLevel: 'off' | 'light' | 'strong';
   defaultCountdown: number;
 }

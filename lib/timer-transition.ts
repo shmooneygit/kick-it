@@ -3,8 +3,11 @@ import { TimerPhase, TimerState, WorkoutConfig } from './types';
 export interface TimerAdvanceResult {
   phase: TimerPhase;
   secondsRemaining: number;
+  phaseRemainingMs: number;
+  phaseDurationMs: number;
   currentRound: number;
   totalElapsedSeconds: number;
+  totalElapsedMs: number;
   isRunning: boolean;
   didFinish: boolean;
   didChangePhase: boolean;
@@ -38,33 +41,88 @@ export function getPlannedDuration(config: WorkoutConfig): number {
   );
 }
 
+export function getPhaseDurationSeconds(
+  config: WorkoutConfig,
+  phase: TimerPhase,
+): number {
+  switch (phase) {
+    case 'countdown':
+      return config.countdownDuration;
+    case 'work':
+      return config.workDuration;
+    case 'rest':
+      return config.restDuration;
+    case 'finished':
+      return 0;
+  }
+}
+
+export function getPhaseDurationMs(
+  config: WorkoutConfig,
+  phase: TimerPhase,
+): number {
+  return getPhaseDurationSeconds(config, phase) * 1000;
+}
+
+function toWholeSecondsRemaining(remainingMs: number, phase: TimerPhase): number {
+  if (phase === 'finished') {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil(remainingMs / 1000));
+}
+
 export function advanceTimerState(
   config: WorkoutConfig,
-  state: Pick<TimerState, 'phase' | 'currentRound' | 'secondsRemaining' | 'totalElapsedSeconds'>,
-  elapsedSeconds: number,
+  state: Pick<
+    TimerState,
+    | 'phase'
+    | 'currentRound'
+    | 'secondsRemaining'
+    | 'phaseRemainingMs'
+    | 'phaseDurationMs'
+    | 'totalElapsedSeconds'
+    | 'totalElapsedMs'
+  >,
+  elapsedMs: number,
 ): TimerAdvanceResult {
-  let remaining = state.secondsRemaining - elapsedSeconds;
+  let remainingMs = state.phaseRemainingMs - elapsedMs;
   let currentPhase = state.phase;
   let currentRound = state.currentRound;
+  let phaseDurationMs =
+    state.phaseDurationMs > 0
+      ? state.phaseDurationMs
+      : getPhaseDurationMs(config, state.phase);
 
-  while (remaining <= 0 && currentPhase !== 'finished') {
+  while (remainingMs <= 0 && currentPhase !== 'finished') {
     const next = getNextPhase(config, currentPhase, currentRound);
     currentPhase = next.phase;
     currentRound = next.round;
-    remaining += next.seconds;
+
+    if (next.phase === 'finished') {
+      remainingMs = 0;
+      phaseDurationMs = 0;
+      break;
+    }
+
+    phaseDurationMs = next.seconds * 1000;
+    remainingMs += phaseDurationMs;
   }
 
-  const totalElapsedSeconds = Math.min(
-    state.totalElapsedSeconds + elapsedSeconds,
-    getPlannedDuration(config),
+  const totalElapsedMs = Math.min(
+    state.totalElapsedMs + elapsedMs,
+    getPlannedDuration(config) * 1000,
   );
   const didFinish = currentPhase === 'finished';
 
   return {
     phase: currentPhase,
-    secondsRemaining: didFinish ? 0 : Math.max(0, remaining),
+    secondsRemaining: didFinish ? 0 : toWholeSecondsRemaining(remainingMs, currentPhase),
+    phaseRemainingMs: didFinish ? 0 : Math.max(0, remainingMs),
+    phaseDurationMs,
     currentRound,
-    totalElapsedSeconds,
+    totalElapsedSeconds: Math.floor(totalElapsedMs / 1000),
+    totalElapsedMs,
     isRunning: !didFinish,
     didFinish,
     didChangePhase:

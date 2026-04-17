@@ -1,7 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRef, useCallback, useEffect } from 'react';
 import { Colors, FontFamily, Spacing } from '@/constants/theme';
-import { triggerHaptic } from '@/lib/haptics';
+import { triggerHapticEvent } from '@/lib/haptics';
 
 interface NumberStepperProps {
   label: string;
@@ -25,8 +25,6 @@ export function NumberStepper({
   compact = false,
 }: NumberStepperProps) {
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const holdCountRef = useRef(0);
-  const lastHapticRef = useRef(0);
   const valueRef = useRef(value);
   valueRef.current = value;
 
@@ -36,22 +34,7 @@ export function NumberStepper({
         clearTimeout(holdTimerRef.current);
         holdTimerRef.current = null;
       }
-      holdCountRef.current = 0;
     };
-  }, []);
-
-  const maybeHaptic = useCallback(() => {
-    const now = Date.now();
-    if (now - lastHapticRef.current >= 150) {
-      lastHapticRef.current = now;
-      triggerHaptic();
-    }
-  }, []);
-
-  const getDelay = useCallback((count: number): number => {
-    if (count < 5) return 300;
-    if (count < 15) return 150;
-    return 80;
   }, []);
 
   const getNextValue = useCallback(() => {
@@ -87,39 +70,38 @@ export function NumberStepper({
     const next = getNextValue();
     if (next !== valueRef.current) {
       onChange(next);
-      maybeHaptic();
+      triggerHapticEvent('stepper');
     }
-  }, [getNextValue, onChange, maybeHaptic]);
+  }, [getNextValue, onChange]);
 
   const doDecrement = useCallback(() => {
     const next = getPreviousValue();
     if (next !== valueRef.current) {
       onChange(next);
-      maybeHaptic();
+      triggerHapticEvent('stepper');
     }
-  }, [getPreviousValue, onChange, maybeHaptic]);
+  }, [getPreviousValue, onChange]);
 
   const stopHold = useCallback(() => {
     if (holdTimerRef.current) {
       clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
     }
-    holdCountRef.current = 0;
   }, []);
 
   const startHold = useCallback((action: () => void) => {
     action();
-    holdCountRef.current = 0;
-
-    const tick = () => {
-      action();
-      holdCountRef.current += 1;
-      holdTimerRef.current = setTimeout(tick, getDelay(holdCountRef.current));
-    };
 
     stopHold();
-    holdTimerRef.current = setTimeout(tick, 400);
-  }, [getDelay, stopHold]);
+    holdTimerRef.current = setTimeout(() => {
+      const tick = () => {
+        action();
+        holdTimerRef.current = setTimeout(tick, 200);
+      };
+
+      tick();
+    }, 1000);
+  }, [stopHold]);
 
   const displayValue = formatValue ? formatValue(value) : String(value);
 

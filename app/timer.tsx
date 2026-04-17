@@ -1,8 +1,17 @@
-import { View, Alert, StyleSheet, Text } from 'react-native';
-import { useEffect, useRef, useMemo, useCallback } from 'react';
+import { AppState, AppStateStatus, View, StyleSheet, Text } from 'react-native';
+import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useKeepAwake } from 'expo-keep-awake';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import Animated, {
+  Easing,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useHistoryStore } from '@/store/history-store';
@@ -10,31 +19,25 @@ import { useAchievementStore } from '@/store/achievement-store';
 import { PRESET_STORAGE_KEY } from '@/hooks/use-presets';
 import { useTimer } from '@/hooks/use-timer';
 import { useSound } from '@/hooks/use-sound';
-import { triggerHaptic, triggerNotification } from '@/lib/haptics';
-import * as Haptics from 'expo-haptics';
+import { triggerHapticEvent } from '@/lib/haptics';
+import {
+  clearPersistedSession,
+  createPersistedSession,
+  restorePersistedTimerState,
+  savePersistedSession,
+} from '@/lib/session-persistence';
+import { ConfirmSheet } from '@/components/confirm-sheet';
+import { SessionLockStrip } from '@/components/session-lock-strip';
 import { TimerDisplay } from '@/components/timer-display';
 import { ControlButtons } from '@/components/control-buttons';
 import { TimerMode, TimerPhase, TimerState, UserPreset, WorkoutConfig } from '@/lib/types';
 import { createSessionResult } from '@/lib/session-result';
 import { getPresetsForMode } from '@/lib/presets';
-import { Colors, FontFamily } from '@/constants/theme';
+import { Colors, FontFamily, withOpacity } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { useSettingsStore } from '@/store/settings-store';
 import { formatTime } from '@/lib/format';
 import { buildWorkoutRecord } from '@/lib/workout-record';
-
-function getPhaseDuration(config: WorkoutConfig, phase: TimerPhase): number {
-  switch (phase) {
-    case 'countdown':
-      return config.countdownDuration;
-    case 'work':
-      return config.workDuration;
-    case 'rest':
-      return config.restDuration;
-    case 'finished':
-      return 0;
-  }
-}
 
 function getTotalRemainingSeconds(config: WorkoutConfig, timerState: TimerState): number {
   if (timerState.phase === 'finished') {
@@ -96,14 +99,45 @@ function getNextPhaseLabel(
   return `${nextPrefix} ${nextName} ${nextRound} · ${formatTime(config.workDuration)}`;
 }
 
+const KEEP_AWAKE_TAG = 'active-session';
+const PHASE_ACCENT_COLORS = [
+  withOpacity(Colors.countdown, 0.08),
+  withOpacity(Colors.work, 0.08),
+  withOpacity(Colors.rest, 0.08),
+  withOpacity(Colors.amber, 0.08),
+  withOpacity(Colors.finished, 0.06),
+];
+
+function shouldKeepScreenAwake(state: TimerState): boolean {
+  return state.isRunning && !state.isPaused && state.phase !== 'finished';
+}
+
+function getPhaseAccentIndex(phase: TimerPhase, isWarning: boolean): number {
+  if (isWarning) {
+    return 3;
+  }
+
+  switch (phase) {
+    case 'countdown':
+      return 0;
+    case 'work':
+      return 1;
+    case 'rest':
+      return 2;
+    case 'finished':
+      return 4;
+  }
+}
+
 export default function TimerScreen() {
-  useKeepAwake();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const config = useWorkoutStore((s) => s.config);
   const activePresetId = useWorkoutStore((s) => s.activePresetId);
   const setLastResult = useWorkoutStore((s) => s.setLastResult);
   const clearLastResult = useWorkoutStore((s) => s.clearLastResult);
+  const setRecoverableSession = useWorkoutStore((s) => s.setRecoverableSession);
+  const setPendingResumeSession = useWorkoutStore((s) => s.setPendingResumeSession);
   const language = useSettingsStore((s) => s.language);
   const addWorkout = useHistoryStore((s) => s.addWorkout);
   const checkAndUnlockBadges = useAchievementStore((s) => s.checkAndUnlockBadges);
@@ -111,82 +145,35 @@ export default function TimerScreen() {
   const startedRef = useRef(false);
   const savedRef = useRef(false);
   const savedRouteParamsRef = useRef<{ recordId: string; newBadgeIds?: string } | null>(null);
+  const unlockCelebrationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showStopModal, setShowStopModal] = useState(false);
+  const [sessionUnlocked, setSessionUnlocked] = useState(true);
+  const [showUnlockCelebration, setShowUnlockCelebration] = useState(false);
+  const activePresetNameRef = useRef<string | undefined>(undefined);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const previousPhaseRef = useRef<TimerPhase | null>(null);
   const isTabata = config.mode === 'tabata';
 
-  const onPhaseChange = useCallback(
-    (phase: TimerPhase, round: number) => {
-      switch (phase) {
-        case 'countdown':
-          triggerHaptic();
-          break;
-        case 'work':
-          play('round', {
-            mode: config.mode,
-            isLastInterval: isTabata && round === config.rounds,
-          });
-          triggerNotification();
-          break;
-        case 'rest':
-          play('rest', { mode: config.mode });
-          triggerNotification(Haptics.NotificationFeedbackType.Warning);
-          break;
+  const persistSessionSnapshot = useCallback(
+    async (overrideState?: TimerState) => {
+      const snapshot = createPersistedSession({
+        programId: activePresetId,
+        programName: activePresetNameRef.current,
+        timerState: overrideState ?? useWorkoutStore.getState().timerState,
+        config,
+      });
+
+      if (!snapshot) {
+        await clearPersistedSession();
+        setRecoverableSession(null);
+        return;
       }
+
+      await savePersistedSession(snapshot);
+      setRecoverableSession(snapshot);
     },
-    [config.mode, config.rounds, isTabata, play],
+    [activePresetId, config, setRecoverableSession],
   );
-
-  const onTick = useCallback(
-    (secondsRemaining: number, phase: TimerPhase, _round: number) => {
-      if (!isTabata && phase === 'work' && secondsRemaining === 10) {
-        play('warning', { mode: config.mode });
-      }
-
-      const shouldPlayFinalTick =
-        secondsRemaining <= 3 &&
-        secondsRemaining > 0 &&
-        (!isTabata || phase === 'countdown' || phase === 'work' || phase === 'rest');
-
-      if (shouldPlayFinalTick) {
-        play('tick', { mode: config.mode });
-      }
-    },
-    [config.mode, isTabata, play],
-  );
-
-  const onFinish = useCallback(() => {
-    play('finish', { mode: config.mode });
-    void stopKeepAlive();
-    triggerNotification();
-  }, [config.mode, play, stopKeepAlive]);
-
-  const { start, pause, resume, stop, timerState } = useTimer(config, {
-    onPhaseChange,
-    onTick,
-    onFinish,
-  });
-
-  useEffect(() => {
-    if (!startedRef.current) {
-      clearLastResult();
-      startedRef.current = true;
-      void startKeepAlive();
-      start();
-    }
-  }, [clearLastResult, start, startKeepAlive]);
-
-  useEffect(() => {
-    return () => {
-      void stopKeepAlive();
-    };
-  }, [stopKeepAlive]);
-
-  const handlePauseResume = () => {
-    if (timerState.isPaused) {
-      resume();
-    } else {
-      pause();
-    }
-  };
 
   const getActivePresetName = useCallback(async () => {
     if (!activePresetId) return undefined;
@@ -209,6 +196,296 @@ export default function TimerScreen() {
       return undefined;
     }
   }, [activePresetId, config.mode, language]);
+
+  const onPhaseChange = useCallback(
+    (phase: TimerPhase, round: number) => {
+      switch (phase) {
+        case 'work':
+          play('round', {
+            mode: config.mode,
+            isLastInterval: isTabata && round === config.rounds,
+          });
+          triggerHapticEvent('roundStart');
+          break;
+        case 'rest':
+          play('rest', { mode: config.mode });
+          triggerHapticEvent('roundEnd');
+          break;
+        case 'countdown':
+        case 'finished':
+          break;
+      }
+
+      void persistSessionSnapshot(useWorkoutStore.getState().timerState);
+    },
+    [config.mode, config.rounds, isTabata, persistSessionSnapshot, play],
+  );
+
+  const onTick = useCallback(
+    (secondsRemaining: number, phase: TimerPhase, _round: number) => {
+      if (!isTabata && phase === 'work' && secondsRemaining === 10) {
+        play('warning', { mode: config.mode });
+        triggerHapticEvent('warningStart');
+      }
+
+      const shouldPlayFinalTick =
+        secondsRemaining <= 3 &&
+        secondsRemaining > 0 &&
+        (!isTabata || phase === 'countdown' || phase === 'work' || phase === 'rest');
+
+      if (shouldPlayFinalTick) {
+        play('tick', { mode: config.mode });
+        triggerHapticEvent('warningTick');
+      }
+    },
+    [config.mode, isTabata, play],
+  );
+
+  const onFinish = useCallback(() => {
+    play('finish', { mode: config.mode });
+    void stopKeepAlive();
+    void clearPersistedSession();
+    setRecoverableSession(null);
+    triggerHapticEvent('workoutComplete');
+  }, [config.mode, play, setRecoverableSession, stopKeepAlive]);
+
+  const { start, pause, resume, restore, stop, timerState } = useTimer(config, {
+    onPhaseChange,
+    onTick,
+    onFinish,
+  });
+  const isWarning =
+    timerState.phase === 'work' &&
+    timerState.secondsRemaining > 0 &&
+    timerState.secondsRemaining <= 10;
+  const lockRequired =
+    timerState.isRunning &&
+    !timerState.isPaused &&
+    timerState.phase !== 'finished';
+  const phaseAccentProgress = useSharedValue(
+    getPhaseAccentIndex(timerState.phase, isWarning),
+  );
+  const flashOpacity = useSharedValue(0);
+  const screenScale = useSharedValue(0.92);
+  const screenOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getActivePresetName()
+      .then((name) => {
+        if (!cancelled) {
+          activePresetNameRef.current = name;
+          if (startedRef.current && useWorkoutStore.getState().timerState.isRunning) {
+            void persistSessionSnapshot(useWorkoutStore.getState().timerState);
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          activePresetNameRef.current = undefined;
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getActivePresetName]);
+
+  useEffect(() => {
+    if (startedRef.current) {
+      return;
+    }
+
+    clearLastResult();
+    startedRef.current = true;
+
+    const pendingResumeSession = useWorkoutStore.getState().pendingResumeSession;
+    if (pendingResumeSession) {
+      setPendingResumeSession(null);
+      const restoredState = restorePersistedTimerState(pendingResumeSession);
+
+      if (restoredState) {
+        if (!restoredState.isPaused) {
+          void startKeepAlive();
+        }
+        restore(restoredState);
+        void persistSessionSnapshot(restoredState);
+        return;
+      }
+
+      void clearPersistedSession();
+      setRecoverableSession(null);
+    }
+
+    void startKeepAlive();
+    start();
+  }, [
+    clearLastResult,
+    persistSessionSnapshot,
+    restore,
+    setPendingResumeSession,
+    setRecoverableSession,
+    start,
+    startKeepAlive,
+  ]);
+
+  useEffect(() => {
+    screenScale.value = withSpring(1, {
+      damping: 16,
+      stiffness: 190,
+      mass: 0.85,
+    });
+    screenOpacity.value = withTiming(1, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [screenOpacity, screenScale]);
+
+  useEffect(() => {
+    return () => {
+      if (unlockCelebrationTimeoutRef.current) {
+        clearTimeout(unlockCelebrationTimeoutRef.current);
+      }
+      void stopKeepAlive();
+    };
+  }, [stopKeepAlive]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextAppState) => {
+      appStateRef.current = nextAppState;
+
+      if (nextAppState !== 'active') {
+        void deactivateKeepAwake(KEEP_AWAKE_TAG);
+        return;
+      }
+
+      if (shouldKeepScreenAwake(useWorkoutStore.getState().timerState)) {
+        void activateKeepAwakeAsync(KEEP_AWAKE_TAG);
+      }
+    });
+
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (appStateRef.current !== 'active' || !shouldKeepScreenAwake(timerState)) {
+      void deactivateKeepAwake(KEEP_AWAKE_TAG);
+      return;
+    }
+
+    void activateKeepAwakeAsync(KEEP_AWAKE_TAG);
+  }, [timerState.isPaused, timerState.isRunning, timerState.phase]);
+
+  useEffect(() => {
+    if (!startedRef.current) {
+      return;
+    }
+
+    if (!timerState.isRunning || timerState.phase === 'finished') {
+      return;
+    }
+
+    void persistSessionSnapshot(timerState);
+  }, [
+    persistSessionSnapshot,
+    timerState.currentRound,
+    timerState.isPaused,
+    timerState.isRunning,
+    timerState.phase,
+  ]);
+
+  useEffect(() => {
+    phaseAccentProgress.value = withTiming(
+      getPhaseAccentIndex(timerState.phase, isWarning),
+      {
+        duration: 400,
+        easing: Easing.inOut(Easing.ease),
+      },
+    );
+  }, [isWarning, phaseAccentProgress, timerState.phase]);
+
+  useEffect(() => {
+    if (!startedRef.current) {
+      previousPhaseRef.current = timerState.phase;
+      return;
+    }
+
+    if (previousPhaseRef.current && previousPhaseRef.current !== timerState.phase) {
+      flashOpacity.value = 0;
+      flashOpacity.value = withSequence(
+        withTiming(0.15, { duration: 100, easing: Easing.out(Easing.quad) }),
+        withTiming(0, { duration: 100, easing: Easing.in(Easing.quad) }),
+      );
+    }
+
+    previousPhaseRef.current = timerState.phase;
+  }, [flashOpacity, timerState.phase]);
+
+  useEffect(() => {
+    return () => {
+      void deactivateKeepAwake(KEEP_AWAKE_TAG);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!lockRequired) {
+      if (unlockCelebrationTimeoutRef.current) {
+        clearTimeout(unlockCelebrationTimeoutRef.current);
+        unlockCelebrationTimeoutRef.current = null;
+      }
+      setSessionUnlocked(true);
+      setShowUnlockCelebration(false);
+      return;
+    }
+
+    setSessionUnlocked(false);
+    setShowUnlockCelebration(false);
+  }, [lockRequired]);
+
+  const handlePauseResume = () => {
+    if (timerState.isPaused) {
+      void startKeepAlive();
+      resume();
+    } else {
+      pause();
+      void stopKeepAlive();
+    }
+  };
+
+  const handleLockedPress = useCallback(() => {
+    triggerHapticEvent('lockedTap');
+  }, []);
+
+  const handleUnlock = useCallback(() => {
+    triggerHapticEvent('unlock');
+    setSessionUnlocked(true);
+    setShowUnlockCelebration(true);
+    if (unlockCelebrationTimeoutRef.current) {
+      clearTimeout(unlockCelebrationTimeoutRef.current);
+    }
+    unlockCelebrationTimeoutRef.current = setTimeout(() => {
+      setShowUnlockCelebration(false);
+      unlockCelebrationTimeoutRef.current = null;
+    }, 320);
+  }, []);
+
+  const backgroundTintStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      phaseAccentProgress.value,
+      [0, 1, 2, 3, 4],
+      PHASE_ACCENT_COLORS,
+    ),
+  }));
+
+  const flashOverlayStyle = useAnimatedStyle(() => ({
+    opacity: flashOpacity.value,
+  }));
+
+  const screenEnterStyle = useAnimatedStyle(() => ({
+    opacity: screenOpacity.value,
+    transform: [{ scale: screenScale.value }],
+  }));
 
   const saveWorkout = useCallback(
     async (wasCompleted: boolean) => {
@@ -238,30 +515,32 @@ export default function TimerScreen() {
 
   const handleStop = () => {
     pause();
-    Alert.alert(t('timer.stopConfirmTitle'), t('timer.stopConfirmMessage'), [
-      {
-        text: t('timer.no'),
-        style: 'cancel',
-        onPress: () => resume(),
-      },
-      {
-        text: t('timer.yes'),
-        style: 'destructive',
-        onPress: async () => {
-          const routeParams = await saveWorkout(false);
-          await stopKeepAlive();
-          stop();
-          router.replace({
-            pathname: '/result',
-            params: routeParams ?? undefined,
-          });
-        },
-      },
-    ]);
+    setShowStopModal(true);
   };
+
+  const handleStopDismiss = useCallback(() => {
+    setShowStopModal(false);
+    void startKeepAlive();
+    resume();
+  }, [resume, startKeepAlive]);
+
+  const handleStopConfirm = useCallback(async () => {
+    setShowStopModal(false);
+    const routeParams = await saveWorkout(false);
+    await clearPersistedSession();
+    setRecoverableSession(null);
+    await stopKeepAlive();
+    stop();
+    router.replace({
+      pathname: '/result',
+      params: routeParams ?? undefined,
+    });
+  }, [router, saveWorkout, setRecoverableSession, stop, stopKeepAlive]);
 
   const handleHome = async () => {
     const routeParams = await saveWorkout(true);
+    await clearPersistedSession();
+    setRecoverableSession(null);
     await stopKeepAlive();
     stop();
     router.replace({
@@ -270,10 +549,6 @@ export default function TimerScreen() {
     });
   };
 
-  const phaseDuration = useMemo(
-    () => getPhaseDuration(config, timerState.phase),
-    [config, timerState.phase],
-  );
   const totalRemainingSeconds = useMemo(
     () => getTotalRemainingSeconds(config, timerState),
     [config, timerState],
@@ -282,10 +557,6 @@ export default function TimerScreen() {
     () => getNextPhaseLabel(language, config, { phase: timerState.phase, currentRound: timerState.currentRound, mode: config.mode }),
     [config, language, timerState],
   );
-  const isWarning =
-    timerState.phase === 'work' &&
-    timerState.secondsRemaining > 0 &&
-    timerState.secondsRemaining <= 10;
 
   return (
     <View
@@ -294,33 +565,61 @@ export default function TimerScreen() {
         { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 },
       ]}
     >
-      <TimerDisplay
-        secondsRemaining={timerState.secondsRemaining}
-        phase={timerState.phase}
-        currentRound={timerState.currentRound}
-        totalRounds={timerState.totalRounds}
-        totalElapsed={timerState.totalElapsedSeconds}
-        phaseDuration={phaseDuration}
-        mode={config.mode}
-        isPaused={timerState.isPaused}
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFillObject, backgroundTintStyle]}
       />
+      <Animated.View pointerEvents="none" style={[styles.flashOverlay, flashOverlayStyle]} />
+      <Animated.View style={[styles.screenBody, screenEnterStyle]}>
+        <ConfirmSheet
+          visible={showStopModal}
+          title={t('timer.stopConfirmTitle')}
+          subtitle={t('timer.stopSavedHint')}
+          confirmLabel={t('timer.stopAction').toUpperCase()}
+          cancelLabel={t('timer.continue').toUpperCase()}
+          confirmTone="danger"
+          onConfirm={() => void handleStopConfirm()}
+          onCancel={handleStopDismiss}
+        />
 
-      <ControlButtons
-        isPaused={timerState.isPaused}
-        isFinished={timerState.phase === 'finished'}
-        onPauseResume={handlePauseResume}
-        onStop={handleStop}
-        onHome={handleHome}
-      />
+        <TimerDisplay
+          secondsRemaining={timerState.secondsRemaining}
+          phaseRemainingMs={timerState.phaseRemainingMs}
+          phase={timerState.phase}
+          currentRound={timerState.currentRound}
+          totalRounds={timerState.totalRounds}
+          totalElapsed={timerState.totalElapsedSeconds}
+          phaseDurationMs={timerState.phaseDurationMs}
+          mode={config.mode}
+          isPaused={timerState.isPaused}
+        />
 
-      <View style={styles.infoBar}>
-        <Text style={[styles.infoText, styles.infoTextLeft, isWarning && styles.infoAccent]} numberOfLines={1}>
-          {nextPhaseLabel}
-        </Text>
-        <Text style={styles.infoText}>
-          {(language === 'uk' ? 'Залиш:' : 'Left:') + ` ${formatTime(totalRemainingSeconds)}`}
-        </Text>
-      </View>
+        <ControlButtons
+          isPaused={timerState.isPaused}
+          isFinished={timerState.phase === 'finished'}
+          isLocked={lockRequired && !sessionUnlocked}
+          onPauseResume={handlePauseResume}
+          onStop={handleStop}
+          onHome={handleHome}
+          onLockedPress={handleLockedPress}
+        />
+
+        <SessionLockStrip
+          visible={(lockRequired && !sessionUnlocked) || showUnlockCelebration}
+          locked={lockRequired && !sessionUnlocked}
+          onUnlock={handleUnlock}
+          onLockedPress={handleLockedPress}
+        />
+
+        <View style={styles.infoBar}>
+          <Text style={[styles.infoText, styles.infoTextLeft, isWarning && styles.infoAccent]} numberOfLines={1}>
+            {nextPhaseLabel}
+          </Text>
+          <Text style={styles.infoText}>
+            {(language === 'uk' ? 'Залиш:' : 'Left:') + ` ${formatTime(totalRemainingSeconds)}`}
+          </Text>
+        </View>
+      </Animated.View>
     </View>
   );
 }
@@ -330,6 +629,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
     paddingHorizontal: 16,
+  },
+  screenBody: {
+    flex: 1,
+  },
+  flashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF',
   },
   infoBar: {
     flexDirection: 'row',

@@ -21,7 +21,7 @@ import { usePresets } from '@/hooks/use-presets';
 import { Preset, TimerMode, WorkoutConfig, WorkoutRecord } from '@/lib/types';
 import { formatConfigShorthand, formatTime, getPresetLabel } from '@/lib/format';
 import { Colors, FontFamily, FontSize } from '@/constants/theme';
-import { triggerHaptic, triggerNotification } from '@/lib/haptics';
+import { triggerHaptic, triggerHapticEvent, triggerNotification } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
 
 function getGreetingLabel(language: 'uk' | 'en'): string {
@@ -52,6 +52,23 @@ function computeTotal(config: WorkoutConfig): number {
     config.rounds * config.workDuration +
     Math.max(0, config.rounds - 1) * config.restDuration
   );
+}
+
+function configureAccordionAnimation() {
+  LayoutAnimation.configureNext({
+    duration: 250,
+    create: {
+      type: LayoutAnimation.Types.easeOut,
+      property: LayoutAnimation.Properties.opacity,
+    },
+    update: {
+      type: LayoutAnimation.Types.easeOut,
+    },
+    delete: {
+      type: LayoutAnimation.Types.easeOut,
+      property: LayoutAnimation.Properties.opacity,
+    },
+  });
 }
 
 interface ConfigRowProps {
@@ -127,7 +144,7 @@ export default function HomeScreen() {
       if (nextMode === mode) return;
       triggerHaptic();
       if (expanded) {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        configureAccordionAnimation();
       }
       setMode(nextMode);
       setLocalConfig(getLastConfigForMode(nextMode));
@@ -147,14 +164,14 @@ export default function HomeScreen() {
   }, []);
 
   const handleStart = useCallback(() => {
-    triggerNotification();
+    triggerHapticEvent('start');
     loadConfig(localConfig, activePresetId);
     rememberLastConfig(localConfig);
     router.push('/timer' as Href);
   }, [activePresetId, loadConfig, localConfig, rememberLastConfig, router]);
 
   const handleAdvancedToggle = useCallback(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    configureAccordionAnimation();
     setExpanded((prev) => !prev);
 
     if (expanded) {
@@ -206,7 +223,7 @@ export default function HomeScreen() {
   );
 
   const openSaveInput = useCallback(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    configureAccordionAnimation();
     setShowSaveInput(true);
   }, []);
 
@@ -397,7 +414,7 @@ export default function HomeScreen() {
                   <Pressable
                     style={styles.saveBtn}
                     onPress={() => {
-                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      configureAccordionAnimation();
                       setShowSaveInput(false);
                       setSaveInputName('');
                     }}

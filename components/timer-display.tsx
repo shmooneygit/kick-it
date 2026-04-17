@@ -1,26 +1,59 @@
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
-import { createAnimatedComponent, useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
-import { useEffect, useRef } from 'react';
+import {
+  Easing,
+  cancelAnimation,
+  createAnimatedComponent,
+  interpolateColor,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
+import { useEffect, useMemo, useRef } from 'react';
 import Svg, { Circle } from 'react-native-svg';
 import { useSettingsStore } from '@/store/settings-store';
 import { TimerPhase, TimerMode } from '@/lib/types';
 import { formatTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
-import {
-  Colors,
-  FontFamily,
-  getPhaseColor,
-} from '@/constants/theme';
+import { Colors, FontFamily, withOpacity } from '@/constants/theme';
 
 const AnimatedCircle = createAnimatedComponent(Circle);
+const AnimatedText = createAnimatedComponent(Text);
+const AnimatedView = createAnimatedComponent(View);
+
+type DisplayState = 'countdown' | 'work' | 'rest' | 'warning' | 'finished';
+
+const DISPLAY_STATE_ORDER: DisplayState[] = [
+  'countdown',
+  'work',
+  'rest',
+  'warning',
+  'finished',
+];
+const DISPLAY_COLORS = [
+  Colors.countdown,
+  Colors.work,
+  Colors.rest,
+  Colors.amber,
+  Colors.finished,
+];
+const DISPLAY_GLOW_COLORS = [
+  withOpacity(Colors.countdown, 0.2),
+  withOpacity(Colors.work, 0.24),
+  withOpacity(Colors.rest, 0.2),
+  withOpacity(Colors.amber, 0.22),
+  withOpacity(Colors.finished, 0.18),
+];
 
 interface TimerDisplayProps {
   secondsRemaining: number;
+  phaseRemainingMs: number;
   phase: TimerPhase;
   currentRound: number;
   totalRounds: number;
   totalElapsed: number;
-  phaseDuration: number;
+  phaseDurationMs: number;
   mode: TimerMode;
   isPaused: boolean;
 }
@@ -46,29 +79,30 @@ function getPhaseLabel(
   }
 }
 
-function getDisplayColor(
+function getDisplayState(
   phase: TimerPhase,
   secondsRemaining: number,
   isLastTabataInterval: boolean,
-): string {
-  if (isLastTabataInterval) {
-    return Colors.amber;
+): DisplayState {
+  if (isLastTabataInterval || (phase === 'work' && secondsRemaining > 0 && secondsRemaining <= 10)) {
+    return 'warning';
   }
 
-  if (phase === 'work' && secondsRemaining > 0 && secondsRemaining <= 10) {
-    return Colors.amber;
-  }
+  return phase;
+}
 
-  return getPhaseColor(phase);
+function getDisplayStateIndex(displayState: DisplayState): number {
+  return DISPLAY_STATE_ORDER.indexOf(displayState);
 }
 
 export function TimerDisplay({
   secondsRemaining,
+  phaseRemainingMs,
   phase,
   currentRound,
   totalRounds,
   totalElapsed,
-  phaseDuration,
+  phaseDurationMs,
   mode,
   isPaused,
 }: TimerDisplayProps) {
@@ -80,32 +114,103 @@ export function TimerDisplay({
     mode === 'tabata' &&
     currentRound === totalRounds &&
     (phase === 'work' || phase === 'rest');
-  const phaseColor = getDisplayColor(phase, secondsRemaining, isLastTabataInterval);
+  const displayState = getDisplayState(phase, secondsRemaining, isLastTabataInterval);
+  const displayStateIndex = getDisplayStateIndex(displayState);
+  const isWarningPulseActive = displayState === 'warning' && phase !== 'finished';
   const size = Math.min(width * 0.68, 280);
   const strokeWidth = 8;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const remainingProgress = useSharedValue(
-    phaseDuration > 0 ? secondsRemaining / phaseDuration : 0,
+  const progress = useSharedValue(
+    phaseDurationMs > 0 ? Math.max(0, phaseRemainingMs / phaseDurationMs) : 0,
   );
+  const colorProgress = useSharedValue(displayStateIndex);
+  const pulseScale = useSharedValue(1);
   const previousPhaseRef = useRef(phase);
+
+  useEffect(() => {
+    colorProgress.value = withTiming(displayStateIndex, {
+      duration: 400,
+      easing: Easing.inOut(Easing.ease),
+    });
+  }, [colorProgress, displayStateIndex]);
+
+  useEffect(() => {
+    const currentRatio = phaseDurationMs > 0 ? Math.max(0, phaseRemainingMs / phaseDurationMs) : 0;
+    const nextWholeSecond = Math.max(secondsRemaining - 1, 0);
+    const targetRemainingMs = nextWholeSecond * 1000;
+    const durationToNextSecond = Math.max(0, phaseRemainingMs - targetRemainingMs);
+    const targetRatio = phaseDurationMs > 0 ? Math.max(0, targetRemainingMs / phaseDurationMs) : 0;
+
+    cancelAnimation(progress);
+    progress.value = currentRatio;
+
+    if (phase !== 'finished' && durationToNextSecond > 0) {
+      progress.value = withTiming(targetRatio, {
+        duration: durationToNextSecond,
+        easing: Easing.linear,
+      });
+    }
+  }, [phase, phaseDurationMs, phaseRemainingMs, progress, secondsRemaining]);
+
+  useEffect(() => {
+    if (!isWarningPulseActive) {
+      cancelAnimation(pulseScale);
+      pulseScale.value = 1;
+      return;
+    }
+
+    cancelAnimation(pulseScale);
+    pulseScale.value = 1;
+    pulseScale.value = withSequence(
+      withTiming(1.03, { duration: 500, easing: Easing.linear }),
+      withTiming(1, { duration: 500, easing: Easing.linear }),
+    );
+  }, [isWarningPulseActive, phase, pulseScale, secondsRemaining]);
 
   useEffect(() => {
     if (previousPhaseRef.current !== phase) {
       previousPhaseRef.current = phase;
-      remainingProgress.value = phaseDuration > 0 ? Math.max(0, secondsRemaining / phaseDuration) : 0;
-      return;
+      cancelAnimation(pulseScale);
+      pulseScale.value = 1;
     }
+  }, [phase, pulseScale]);
 
-    remainingProgress.value = withTiming(
-      phaseDuration > 0 ? Math.max(0, secondsRemaining / phaseDuration) : 0,
-      { duration: 900 },
-    );
-  }, [phase, phaseDuration, remainingProgress, secondsRemaining]);
-
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: circumference * (1 - remainingProgress.value),
+  const animatedCircleProps = useAnimatedProps(() => ({
+    strokeDashoffset: circumference * (1 - progress.value),
+    stroke: interpolateColor(colorProgress.value, [0, 1, 2, 3, 4], DISPLAY_COLORS),
   }));
+
+  const digitsAnimatedStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(colorProgress.value, [0, 1, 2, 3, 4], DISPLAY_COLORS),
+    transform: [{ scale: pulseScale.value }],
+  }));
+
+  const phaseLabelAnimatedStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(colorProgress.value, [0, 1, 2, 3, 4], DISPLAY_COLORS),
+  }));
+
+  const ringGlowStyle = useAnimatedStyle(() => ({
+    shadowColor: interpolateColor(colorProgress.value, [0, 1, 2, 3, 4], DISPLAY_COLORS),
+    shadowOpacity: 0.55,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: interpolateColor(
+      colorProgress.value,
+      [0, 1, 2, 3, 4],
+      DISPLAY_GLOW_COLORS,
+    ),
+    transform: [{ scale: pulseScale.value }],
+  }));
+
+  const ringAccentStyle = useMemo(
+    () => ({
+      width: size + 30,
+      height: size + 30,
+      borderRadius: (size + 30) / 2,
+    }),
+    [size],
+  );
 
   const renderCounter = () => {
     if (phase === 'rest' && currentRound < totalRounds) {
@@ -132,13 +237,15 @@ export function TimerDisplay({
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.phaseLabel, { color: phaseColor }]}>
+      <AnimatedText style={[styles.phaseLabel, phaseLabelAnimatedStyle]}>
         {getPhaseLabel(phase, mode, isLastTabataInterval)}
-      </Text>
+      </AnimatedText>
 
       {renderCounter()}
 
       <View style={[styles.ringContainer, { width: size, height: size }]}>
+        <AnimatedView style={[styles.ringGlow, ringAccentStyle, ringGlowStyle]} />
+
         <Svg width={size} height={size}>
           <Circle
             cx={size / 2}
@@ -155,7 +262,6 @@ export function TimerDisplay({
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke={phaseColor}
             strokeWidth={strokeWidth}
             strokeLinecap="butt"
             fill="none"
@@ -163,12 +269,14 @@ export function TimerDisplay({
             rotation="-90"
             originX={size / 2}
             originY={size / 2}
-            animatedProps={animatedProps}
+            animatedProps={animatedCircleProps}
           />
         </Svg>
 
         <View style={styles.ringCenter}>
-          <Text style={[styles.digits, { color: phaseColor }]}>{formatTime(secondsRemaining)}</Text>
+          <AnimatedText style={[styles.digits, digitsAnimatedStyle]}>
+            {formatTime(secondsRemaining)}
+          </AnimatedText>
         </View>
       </View>
 
@@ -216,6 +324,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 18,
+  },
+  ringGlow: {
+    position: 'absolute',
   },
   ringCenter: {
     position: 'absolute',

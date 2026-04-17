@@ -57,7 +57,11 @@ const modeSoundProfiles: Record<TimerMode, ModeSoundProfile> = {
   tabata: tabataSoundProfile,
 };
 
-export const preloadedSoundAssets: SoundAsset[] = [BELL, BEEP];
+export const preloadedSoundAssets: SoundAsset[] = Array.from(
+  new Set(
+    Object.values(modeSoundProfiles).flatMap((profile) => Object.values(profile.assets)),
+  ),
+);
 
 function resolveRepeat(
   resolver: RepeatResolver | undefined,
