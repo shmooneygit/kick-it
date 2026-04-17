@@ -109,6 +109,7 @@ export function useSound() {
 
   useEffect(() => {
     mountedRef.current = true;
+    const activeSounds = activeSoundsRef.current;
     void Asset.loadAsync([...preloadedSoundAssets, KEEP_ALIVE_ASSET]);
 
     return () => {
@@ -122,7 +123,7 @@ export function useSound() {
         keepAliveSound.stopAsync().catch(() => {});
         keepAliveSound.unloadAsync().catch(() => {});
       }
-      activeSoundsRef.current.forEach((sound) => unloadSound(sound));
+      activeSounds.forEach((sound) => unloadSound(sound));
     };
   }, [unloadSound]);
 
