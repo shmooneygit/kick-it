@@ -24,7 +24,7 @@
     "timer": "Таймер",
     "stats": "Статистика",
     "achievements": "Досягнення",
-    "settings": "Налаштування"
+    "settings": "Налашт."
   },
   "settings": {
     "rounds": "Раунди",
@@ -40,6 +40,7 @@
     "whistle": "Свисток",
     "presets": "Програми",
     "savePreset": "Зберегти",
+    "saveAsProgram": "Зберегти як програму",
     "presetName": "Назва програми",
     "presetSaved": "Програму збережено",
     "noPresets": "Немає збережених програм",

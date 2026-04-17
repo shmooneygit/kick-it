@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { TabIcon } from '@/components/tab-icon';
 import { Colors, FontFamily } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { useSettingsStore } from '@/store/settings-store';
@@ -24,14 +25,17 @@ export default function TabLayout() {
           backgroundColor: Colors.tabBar,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          height: 56,
-          paddingTop: 4,
+          height: 60,
+          paddingTop: 6,
           paddingBottom: 8,
         },
-        tabBarActiveTintColor: Colors.green,
-        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarActiveTintColor: '#39FF14',
+        tabBarInactiveTintColor: '#333333',
         tabBarItemStyle: {
           justifyContent: 'center',
+        },
+        tabBarIconStyle: {
+          marginBottom: 2,
         },
         tabBarLabelStyle: {
           fontFamily: FontFamily.body,
@@ -45,28 +49,28 @@ export default function TabLayout() {
         name="index"
         options={{
           title: t('tabs.timer').toUpperCase(),
-          tabBarIcon: () => null,
+          tabBarIcon: ({ color }) => <TabIcon name="timer" color={color} />,
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
           title: t('tabs.stats').toUpperCase(),
-          tabBarIcon: () => null,
+          tabBarIcon: ({ color }) => <TabIcon name="stats" color={color} />,
         }}
       />
       <Tabs.Screen
         name="achievements"
         options={{
           title: t('tabs.achievements').toUpperCase(),
-          tabBarIcon: () => null,
+          tabBarIcon: ({ color }) => <TabIcon name="achievements" color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: t('tabs.settings').toUpperCase(),
-          tabBarIcon: () => null,
+          tabBarIcon: ({ color }) => <TabIcon name="settings" color={color} />,
         }}
       />
     </Tabs>
