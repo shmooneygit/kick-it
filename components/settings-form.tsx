@@ -22,11 +22,9 @@ import {
   FontSize,
   Spacing,
 } from '@/constants/theme';
-import { getSoundSchemeLabel } from '@/lib/format';
 import { NumberStepper } from './number-stepper';
 import { DurationStepper } from './duration-stepper';
 import { NeonButton } from './neon-button';
-import { SoundPicker } from './sound-picker';
 
 interface SettingsFormProps {
   mode: TimerMode;
@@ -60,7 +58,6 @@ export function SettingsForm({ mode }: SettingsFormProps) {
   const [targetMinutes, setTargetMinutes] = useState<number | null>(null);
   const [showSaveInput, setShowSaveInput] = useState(false);
   const [saveInputName, setSaveInputName] = useState('');
-  const [showSoundPicker, setShowSoundPicker] = useState(false);
 
   const isBoxing = mode === 'boxing';
   const roundsMax = isBoxing ? 50 : 30;
@@ -110,7 +107,6 @@ export function SettingsForm({ mode }: SettingsFormProps) {
         workDuration: preset.workDuration,
         restDuration: preset.restDuration,
         countdownDuration: preset.countdownDuration,
-        soundScheme: preset.soundScheme,
       });
       setActivePresetId(preset.id);
       setShowDuration(true);
@@ -324,18 +320,6 @@ export function SettingsForm({ mode }: SettingsFormProps) {
             </View>
           </View>
 
-          {!isBoxing && (
-            <View style={styles.toggleRow}>
-              <Pressable style={styles.soundCard} onPress={() => setShowSoundPicker(true)}>
-                <Text style={styles.toggleLabel}>{t('settings.soundScheme').toUpperCase()}</Text>
-                <View style={styles.soundValueRow}>
-                  <Text style={styles.soundValue}>{getSoundSchemeLabel(config.soundScheme)}</Text>
-                  <Text style={styles.soundChevron}>▾</Text>
-                </View>
-              </Pressable>
-            </View>
-          )}
-
           <Text style={styles.totalLine}>
             <Text style={styles.totalLabel}>{t('settings.totalWorkout')}: </Text>
             <Text style={styles.totalValue}>{formatTotalTime(totalSeconds)}</Text>
@@ -352,18 +336,6 @@ export function SettingsForm({ mode }: SettingsFormProps) {
         </View>
       </View>
 
-      {!isBoxing && (
-        <SoundPicker
-          visible={showSoundPicker}
-          currentScheme={config.soundScheme}
-          onSelect={(scheme) => {
-            setConfig({ soundScheme: scheme });
-            setActivePresetId(null);
-            triggerHaptic();
-          }}
-          onClose={() => setShowSoundPicker(false)}
-        />
-      )}
     </View>
   );
 }

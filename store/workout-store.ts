@@ -16,7 +16,6 @@ const DEFAULT_BOXING: WorkoutConfig = {
   workDuration: 180,
   restDuration: 60,
   countdownDuration: 5,
-  soundScheme: 'bell',
 };
 
 const DEFAULT_TABATA: WorkoutConfig = {
@@ -25,7 +24,6 @@ const DEFAULT_TABATA: WorkoutConfig = {
   workDuration: 20,
   restDuration: 10,
   countdownDuration: 10,
-  soundScheme: 'beep',
 };
 
 const initialTimerState: TimerState = {
@@ -85,7 +83,6 @@ function sanitizeConfig(config: WorkoutConfig): WorkoutConfig {
       isTabata ? 60 : 300,
     ),
     countdownDuration: sanitizeDuration(config.countdownDuration, 5, 30),
-    soundScheme: config.soundScheme,
   };
 }
 
@@ -97,7 +94,6 @@ function createConfig(mode: TimerMode): WorkoutConfig {
     ...base,
     countdownDuration:
       mode === 'boxing' ? settings.defaultCountdown : base.countdownDuration,
-    soundScheme: settings.soundScheme,
   });
 }
 

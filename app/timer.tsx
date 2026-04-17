@@ -106,7 +106,7 @@ export default function TimerScreen() {
   const language = useSettingsStore((s) => s.language);
   const addWorkout = useHistoryStore((s) => s.addWorkout);
   const checkAndUnlockBadges = useAchievementStore((s) => s.checkAndUnlockBadges);
-  const { play, startKeepAlive, stopKeepAlive } = useSound(config.soundScheme);
+  const { play, startKeepAlive, stopKeepAlive } = useSound();
   const startedRef = useRef(false);
   const savedRef = useRef(false);
   const savedRouteParamsRef = useRef<{ recordId: string; newBadgeIds?: string } | null>(null);
@@ -137,7 +137,7 @@ export default function TimerScreen() {
   const onTick = useCallback(
     (secondsRemaining: number, phase: TimerPhase, _round: number) => {
       if (!isTabata && phase === 'work' && secondsRemaining === 10) {
-        play('warning');
+        play('warning', { mode: config.mode });
       }
 
       const shouldPlayFinalTick =
@@ -146,17 +146,17 @@ export default function TimerScreen() {
         (!isTabata || phase === 'countdown' || phase === 'work' || phase === 'rest');
 
       if (shouldPlayFinalTick) {
-        play('tick');
+        play('tick', { mode: config.mode });
       }
     },
-    [isTabata, play],
+    [config.mode, isTabata, play],
   );
 
   const onFinish = useCallback(() => {
-    play('finish');
+    play('finish', { mode: config.mode });
     void stopKeepAlive();
     triggerNotification();
-  }, [play, stopKeepAlive]);
+  }, [config.mode, play, stopKeepAlive]);
 
   const { start, pause, resume, stop, timerState } = useTimer(config, {
     onPhaseChange,

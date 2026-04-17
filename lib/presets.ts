@@ -10,7 +10,6 @@ export const boxingPresets: BuiltInPreset[] = [
     workDuration: 180,
     restDuration: 60,
     countdownDuration: 5,
-    soundScheme: 'bell',
     isBuiltIn: true,
   },
   {
@@ -22,7 +21,6 @@ export const boxingPresets: BuiltInPreset[] = [
     workDuration: 120,
     restDuration: 60,
     countdownDuration: 10,
-    soundScheme: 'bell',
     isBuiltIn: true,
   },
   {
@@ -34,7 +32,6 @@ export const boxingPresets: BuiltInPreset[] = [
     workDuration: 180,
     restDuration: 30,
     countdownDuration: 5,
-    soundScheme: 'bell',
     isBuiltIn: true,
   },
   {
@@ -46,7 +43,6 @@ export const boxingPresets: BuiltInPreset[] = [
     workDuration: 60,
     restDuration: 30,
     countdownDuration: 5,
-    soundScheme: 'beep',
     isBuiltIn: true,
   },
 ];
@@ -61,7 +57,6 @@ export const tabataPresets: BuiltInPreset[] = [
     workDuration: 20,
     restDuration: 10,
     countdownDuration: 10,
-    soundScheme: 'beep',
     isBuiltIn: true,
   },
   {
@@ -73,7 +68,6 @@ export const tabataPresets: BuiltInPreset[] = [
     workDuration: 30,
     restDuration: 15,
     countdownDuration: 10,
-    soundScheme: 'beep',
     isBuiltIn: true,
   },
   {
@@ -85,7 +79,6 @@ export const tabataPresets: BuiltInPreset[] = [
     workDuration: 40,
     restDuration: 20,
     countdownDuration: 10,
-    soundScheme: 'beep',
     isBuiltIn: true,
   },
   {
@@ -97,7 +90,6 @@ export const tabataPresets: BuiltInPreset[] = [
     workDuration: 20,
     restDuration: 10,
     countdownDuration: 10,
-    soundScheme: 'beep',
     isBuiltIn: true,
   },
 ];

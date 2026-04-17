@@ -5,11 +5,13 @@ import {
   InterruptionModeIOS,
 } from 'expo-av';
 import { Asset } from 'expo-asset';
-import { SoundScheme, TimerMode } from '@/lib/types';
+import { TimerMode } from '@/lib/types';
 import {
-  getSoundAsset,
+  getModePreviewAsset,
+  getSoundPlayback,
   preloadedSoundAssets,
   SoundAsset,
+  SoundPlaybackOptions,
   SoundEvent,
 } from '@/lib/sounds';
 
@@ -34,9 +36,7 @@ export function configureAudioModeOnce(): Promise<void> {
   return audioModePromise;
 }
 
-export function useSound(scheme: SoundScheme) {
-  const schemeRef = useRef(scheme);
-  schemeRef.current = scheme;
+export function useSound() {
   const activeSoundsRef = useRef<Set<Audio.Sound>>(new Set());
   const patternTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const keepAliveSoundRef = useRef<Audio.Sound | null>(null);
@@ -152,27 +152,9 @@ export function useSound(scheme: SoundScheme) {
   const play = useCallback(
     async (
       type: SoundEvent,
-      options?: { mode?: TimerMode; isLastInterval?: boolean },
+      options: { mode: TimerMode } & SoundPlaybackOptions,
     ) => {
-      const mode = options?.mode ?? 'boxing';
-      const effectiveScheme = mode === 'boxing' ? 'bell' : schemeRef.current;
-      const asset = getSoundAsset(mode, type, effectiveScheme);
-
-      if (!asset) {
-        return;
-      }
-
-      let repeat = 1;
-
-      if (mode === 'tabata') {
-        if (type === 'round') {
-          repeat = options?.isLastInterval ? 3 : 1;
-        } else if (type === 'rest') {
-          repeat = 2;
-        }
-      } else if (type === 'warning') {
-        repeat = 2;
-      }
+      const { asset, repeat } = getSoundPlayback(options.mode, type, options);
 
       try {
         await queuePattern(asset, repeat);
@@ -183,5 +165,19 @@ export function useSound(scheme: SoundScheme) {
     [queuePattern],
   );
 
-  return { play, startKeepAlive, stopKeepAlive };
+  const previewMode = useCallback(
+    async (mode: TimerMode) => {
+      const asset = getModePreviewAsset(mode);
+
+      try {
+        await playClip(asset);
+      } catch (error) {
+        console.warn('Sound preview failed:', error);
+        throw error;
+      }
+    },
+    [playClip],
+  );
+
+  return { play, previewMode, startKeepAlive, stopKeepAlive };
 }

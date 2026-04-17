@@ -11,11 +11,13 @@ import {
 import Constants from 'expo-constants';
 import { useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSound } from '@/hooks/use-sound';
+import { getModeSoundLabelKey } from '@/lib/sounds';
+import { TimerMode } from '@/lib/types';
 import { useSettingsStore } from '@/store/settings-store';
 import { usePresets } from '@/hooks/use-presets';
 import { NumberStepper } from '@/components/number-stepper';
 import { Colors, FontFamily, Spacing } from '@/constants/theme';
-import { getSoundSchemeLabel } from '@/lib/format';
 import { t } from '@/lib/i18n';
 
 export default function SettingsScreen() {
@@ -24,6 +26,7 @@ export default function SettingsScreen() {
   const language = useSettingsStore((s) => s.language);
   const update = useSettingsStore((s) => s.update);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
+  const { previewMode } = useSound();
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
   const { userPresets: boxingPresets, deletePreset: deleteBoxing } = usePresets('boxing');
   const { userPresets: tabataPresets, deletePreset: deleteTabata } = usePresets('tabata');
@@ -57,6 +60,15 @@ export default function SettingsScreen() {
     [allUserPresets, deleteBoxing, deleteTabata],
   );
 
+  const handleSoundPreview = useCallback(
+    (mode: TimerMode) => {
+      previewMode(mode).catch((error) => {
+        console.warn('[settings] sound preview failed:', error);
+      });
+    },
+    [previewMode],
+  );
+
   return (
     <View
       style={[
@@ -73,8 +85,28 @@ export default function SettingsScreen() {
         <Text style={styles.sectionLabel}>{t('settingsScreen.soundVibration').toUpperCase()}</Text>
         <View style={styles.group}>
           <View style={[styles.row, styles.rowDivider]}>
-            <Text style={styles.label}>{t('settingsScreen.soundScheme')}</Text>
-            <Text style={styles.valueAccent}>{getSoundSchemeLabel(settings.soundScheme)}</Text>
+            <Text style={styles.label}>{t('home.boxing')}</Text>
+            <View style={styles.valueRow}>
+              <Text style={styles.valueAccent}>{t(getModeSoundLabelKey('boxing'))}</Text>
+              <Pressable
+                style={styles.previewButton}
+                onPress={() => handleSoundPreview('boxing')}
+              >
+                <Text style={styles.previewButtonText}>{t('settingsScreen.testSound')}</Text>
+              </Pressable>
+            </View>
+          </View>
+          <View style={[styles.row, styles.rowDivider]}>
+            <Text style={styles.label}>{t('home.tabata')}</Text>
+            <View style={styles.valueRow}>
+              <Text style={styles.valueAccent}>{t(getModeSoundLabelKey('tabata'))}</Text>
+              <Pressable
+                style={styles.previewButton}
+                onPress={() => handleSoundPreview('tabata')}
+              >
+                <Text style={styles.previewButtonText}>{t('settingsScreen.testSound')}</Text>
+              </Pressable>
+            </View>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>{t('settingsScreen.vibration')}</Text>
@@ -228,10 +260,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.green,
   },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   valueMuted: {
     fontFamily: FontFamily.body,
     fontSize: 13,
     color: Colors.textMuted,
+  },
+  previewButton: {
+    borderWidth: 1,
+    borderColor: Colors.green,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  previewButtonText: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 11,
+    color: Colors.green,
+    letterSpacing: 0.4,
   },
   segmented: {
     flexDirection: 'row',

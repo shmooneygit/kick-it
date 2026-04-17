@@ -43,7 +43,6 @@ export function usePresets(mode: TimerMode) {
         workDuration: config.workDuration,
         restDuration: config.restDuration,
         countdownDuration: config.countdownDuration,
-        soundScheme: config.soundScheme,
         isBuiltIn: false,
         createdAt: Date.now(),
       };

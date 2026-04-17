@@ -1,5 +1,5 @@
 import { t } from '@/lib/i18n';
-import { SoundScheme, WorkoutConfig, WorkoutRecord } from '@/lib/types';
+import { WorkoutConfig, WorkoutRecord } from '@/lib/types';
 
 interface FormatTimeOptions {
   style?: 'clock' | 'summary';
@@ -37,15 +37,4 @@ export function getPresetLabel(
   record?: Pick<WorkoutRecord, 'presetName'> | null,
 ): string {
   return record?.presetName ?? t('custom_preset');
-}
-
-export function getSoundSchemeLabel(scheme: SoundScheme): string {
-  switch (scheme) {
-    case 'bell':
-      return t('sound_bell');
-    case 'beep':
-      return t('sound_beep');
-    case 'whistle':
-      return t('sound_whistle');
-  }
 }

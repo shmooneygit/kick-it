@@ -12,7 +12,6 @@ function detectLanguage(): 'uk' | 'en' {
 
 const defaults: AppSettings = {
   language: detectLanguage(),
-  soundScheme: 'bell',
   vibrationEnabled: true,
   defaultCountdown: 5,
 };
@@ -27,7 +26,6 @@ function clampToStep(value: number, min: number, max: number, step: number): num
 function normalizeSettings(settings: AppSettings): AppSettings {
   return {
     language: settings.language === 'uk' ? 'uk' : 'en',
-    soundScheme: settings.soundScheme,
     vibrationEnabled: settings.vibrationEnabled,
     defaultCountdown: clampToStep(settings.defaultCountdown, 5, 30, 5),
   };

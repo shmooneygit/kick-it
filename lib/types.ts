@@ -1,5 +1,4 @@
 export type TimerMode = 'boxing' | 'tabata';
-export type SoundScheme = 'bell' | 'beep' | 'whistle';
 export type TimerPhase = 'countdown' | 'work' | 'rest' | 'finished';
 
 export interface WorkoutConfig {
@@ -8,7 +7,6 @@ export interface WorkoutConfig {
   workDuration: number;
   restDuration: number;
   countdownDuration: number;
-  soundScheme: SoundScheme;
 }
 
 export interface BasePreset extends WorkoutConfig {
@@ -85,7 +83,6 @@ export interface TimerState {
 
 export interface AppSettings {
   language: 'uk' | 'en';
-  soundScheme: SoundScheme;
   vibrationEnabled: boolean;
   defaultCountdown: number;
 }
