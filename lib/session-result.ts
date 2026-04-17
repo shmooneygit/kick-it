@@ -1,4 +1,4 @@
-import { SessionResult, TimerMode, TimerState } from '@/lib/types';
+import { SessionResult, TimerMode, TimerState } from './types';
 
 export function getCompletedRounds(state: TimerState): number {
   switch (state.phase) {

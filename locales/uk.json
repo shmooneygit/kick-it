@@ -1,23 +1,12 @@
 {
   "custom_preset": "Власні",
-  "sound_scheme": "Звукова схема",
   "sound_bell": "Дзвінок",
   "sound_beep": "Біп",
-  "sound_whistle": "Свисток",
   "new_badge": "Новий бейдж!",
-  "greetingMorning": "Доброго ранку, бійцю! 👊",
-  "greetingAfternoon": "Добрий день, бійцю! 👊",
-  "greetingEvening": "Добрий вечір, бійцю! 👊",
   "home": {
-    "title": "FIGHT TIMER",
     "boxing": "БОКС",
-    "boxingTimer": "Бокс таймер",
-    "boxingDescription": "Раунди з відпочинком",
     "tabata": "ТАБАТА",
-    "tabataTimer": "Табата таймер",
-    "tabataDescription": "Інтервали високої інтенсивності",
     "recent": "Останні",
-    "repeat": "Повторити",
     "recentEmpty": "Твої тренування з'являться тут"
   },
   "tabs": {
@@ -34,27 +23,17 @@
     "restDuration": "Відпочинок",
     "countdown": "Відлік",
     "countdownUnit": "сек",
-    "soundScheme": "Звуки",
-    "bell": "Дзвінок",
-    "beep": "Біп",
-    "whistle": "Свисток",
-    "presets": "Програми",
     "savePreset": "Зберегти",
     "saveAsProgram": "Зберегти як програму",
     "presetName": "Назва програми",
-    "presetSaved": "Програму збережено",
     "noPresets": "Немає збережених програм",
     "start": "СТАРТ",
-    "save": "Зберегти",
     "cancel": "Скасувати",
     "delete": "Видалити",
     "confirmDelete": "Видалити програму?",
     "totalWorkout": "Загалом",
     "workoutDuration": "Тривалість",
-    "minutesShort": "хв",
-    "roundsCalculated": "раундів",
-    "intervalsCalculated": "інтервалів",
-    "custom": "Власні"
+    "minutesShort": "хв"
   },
   "timer": {
     "preparation": "ПІДГОТОВКА",
@@ -63,18 +42,11 @@
     "last_interval": "ОСТАННІЙ",
     "rest": "ВІДПОЧИНОК",
     "finished": "ЗАВЕРШЕНО",
-    "pause": "Пауза",
-    "resume": "Продовжити",
-    "stop": "Стоп",
     "stopConfirmTitle": "Зупинити тренування?",
     "stopConfirmMessage": "Ви впевнені, що хочете зупинити?",
     "yes": "Так",
     "no": "Ні",
     "elapsed": "Загалом",
-    "roundOf": "з",
-    "intervalOf": "з",
-    "interval_n_of_total": "%{current} з %{total}",
-    "totalTime": "Загальний час",
     "backHome": "На головну"
   },
   "result": {
@@ -83,9 +55,10 @@
     "roundsCompleted": "раундів",
     "intervalsCompleted": "інтервалів",
     "totalTime": "Загальний час",
-    "completed": "✅ Повністю завершено",
     "repeat": "Повторити",
-    "done": "Готово"
+    "done": "Готово",
+    "unavailableTitle": "Немає результату тренування",
+    "unavailableMessage": "Запусти або заверши тренування, щоб побачити результат."
   },
   "stats": {
     "title": "СТАТИСТИКА",
@@ -97,7 +70,6 @@
     "totalWorkouts": "Тренування",
     "activity": "Активність",
     "recent": "Останні тренування",
-    "rounds": "раундів",
     "empty": "Ще немає тренувань",
     "hourShort": "год",
     "minuteShort": "хв"
@@ -110,26 +82,20 @@
     "rounds": "раундів",
     "currentStreak": "Поточна серія",
     "bestStreak": "Найкраща серія",
-    "days": "днів",
     "badges": "Нагороди",
-    "earned": "✅ Отримано",
-    "empty": "Тренуйся, щоб отримати нагороди!"
+    "earned": "Отримано"
   },
   "settingsScreen": {
     "title": "НАЛАШТУВАННЯ",
     "soundVibration": "Звук і вібрація",
-    "soundScheme": "Звукова схема",
     "testSound": "Тест",
     "vibration": "Вібрація",
     "timerSection": "Таймер",
     "defaultCountdown": "Відлік за замовчуванням",
     "language": "Мова",
-    "languageUkrainian": "Українська",
-    "languageEnglish": "English",
     "myPrograms": "Мої програми",
     "about": "Про додаток",
     "version": "Версія",
-    "versionValue": "Fight Timer v%{version}",
     "contactDev": "Написати розробнику"
   }
 }

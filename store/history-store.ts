@@ -1,26 +1,10 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WorkoutRecord, UserStats } from '@/lib/types';
-import {
-  startOfDay,
-  differenceInCalendarDays,
-  parseISO,
-  format,
-} from 'date-fns';
+import { buildNextStats, emptyStats } from '@/lib/history-utils';
 
 const HISTORY_KEY = 'workout_history';
 const STATS_KEY = 'user_stats';
-
-const emptyStats: UserStats = {
-  totalWorkouts: 0,
-  totalRounds: 0,
-  totalDuration: 0,
-  boxingWorkouts: 0,
-  tabataWorkouts: 0,
-  currentStreak: 0,
-  bestStreak: 0,
-  lastWorkoutDate: '',
-};
 
 interface HistoryStore {
   history: WorkoutRecord[];
@@ -29,37 +13,6 @@ interface HistoryStore {
   load: () => Promise<void>;
   addWorkout: (record: WorkoutRecord) => Promise<void>;
   clearAll: () => Promise<void>;
-}
-
-function calcStreak(
-  existingStreak: number,
-  bestStreak: number,
-  lastWorkoutDate: string,
-  newDate: string,
-): { currentStreak: number; bestStreak: number } {
-  const today = startOfDay(parseISO(newDate));
-
-  if (!lastWorkoutDate) {
-    return { currentStreak: 1, bestStreak: Math.max(bestStreak, 1) };
-  }
-
-  const lastDay = startOfDay(parseISO(lastWorkoutDate));
-  const diff = differenceInCalendarDays(today, lastDay);
-
-  if (diff === 0) {
-    // Same day — streak unchanged
-    return {
-      currentStreak: existingStreak,
-      bestStreak: Math.max(bestStreak, existingStreak),
-    };
-  }
-  if (diff === 1) {
-    // Consecutive day — extend streak
-    const next = existingStreak + 1;
-    return { currentStreak: next, bestStreak: Math.max(bestStreak, next) };
-  }
-  // Gap — reset streak
-  return { currentStreak: 1, bestStreak: Math.max(bestStreak, 1) };
 }
 
 export const useHistoryStore = create<HistoryStore>((set, get) => ({
@@ -90,26 +43,7 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
       updatedHistory = updatedHistory.slice(0, 500);
     }
 
-    const dateStr = format(parseISO(record.date), 'yyyy-MM-dd');
-    const { currentStreak, bestStreak } = calcStreak(
-      stats.currentStreak,
-      stats.bestStreak,
-      stats.lastWorkoutDate,
-      dateStr,
-    );
-
-    const newStats: UserStats = {
-      totalWorkouts: stats.totalWorkouts + 1,
-      totalRounds: stats.totalRounds + record.completedRounds,
-      totalDuration: stats.totalDuration + record.totalDuration,
-      boxingWorkouts:
-        stats.boxingWorkouts + (record.mode === 'boxing' ? 1 : 0),
-      tabataWorkouts:
-        stats.tabataWorkouts + (record.mode === 'tabata' ? 1 : 0),
-      currentStreak,
-      bestStreak,
-      lastWorkoutDate: dateStr,
-    };
+    const newStats: UserStats = buildNextStats(stats, record);
 
     set({ history: updatedHistory, stats: newStats });
 

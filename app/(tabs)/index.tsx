@@ -148,10 +148,10 @@ export default function HomeScreen() {
 
   const handleStart = useCallback(() => {
     triggerNotification();
-    loadConfig(localConfig);
+    loadConfig(localConfig, activePresetId);
     rememberLastConfig(localConfig);
     router.push('/timer' as Href);
-  }, [loadConfig, localConfig, rememberLastConfig, router]);
+  }, [activePresetId, loadConfig, localConfig, rememberLastConfig, router]);
 
   const handleAdvancedToggle = useCallback(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -174,7 +174,13 @@ export default function HomeScreen() {
       });
       setActivePresetId(preset.id);
       setShowDuration(true);
-      const totalSec = preset.rounds * (preset.workDuration + preset.restDuration);
+      const totalSec = computeTotal({
+        mode,
+        rounds: preset.rounds,
+        workDuration: preset.workDuration,
+        restDuration: preset.restDuration,
+        countdownDuration: preset.countdownDuration,
+      });
       setTargetMinutes(Math.max(5, Math.round(totalSec / 60)));
       triggerHaptic();
     },

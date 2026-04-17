@@ -21,6 +21,7 @@ import { Colors, FontFamily } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 import { useSettingsStore } from '@/store/settings-store';
 import { formatTime } from '@/lib/format';
+import { buildWorkoutRecord } from '@/lib/workout-record';
 
 function getPhaseDuration(config: WorkoutConfig, phase: TimerPhase): number {
   switch (phase) {
@@ -217,17 +218,12 @@ export default function TimerScreen() {
       const sessionResult = createSessionResult(state, config.mode, wasCompleted);
       const presetName = await getActivePresetName();
       setLastResult(sessionResult);
-      const record = {
-        id: `w_${Date.now()}`,
-        date: new Date().toISOString(),
-        mode: sessionResult.mode,
+      const record = buildWorkoutRecord({
         config,
-        completedRounds: sessionResult.completedRounds,
-        totalDuration: sessionResult.totalDuration,
-        wasCompleted: sessionResult.wasCompleted,
+        sessionResult,
         presetId: activePresetId ?? undefined,
         presetName,
-      };
+      });
       await addWorkout(record);
       const newBadgeIds = await checkAndUnlockBadges(record);
       const routeParams = {

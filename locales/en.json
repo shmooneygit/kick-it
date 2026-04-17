@@ -1,23 +1,12 @@
 {
   "custom_preset": "Custom",
-  "sound_scheme": "Sound scheme",
   "sound_bell": "Bell",
   "sound_beep": "Beep",
-  "sound_whistle": "Whistle",
   "new_badge": "New badge!",
-  "greetingMorning": "Good morning, fighter! 👊",
-  "greetingAfternoon": "Good afternoon, fighter! 👊",
-  "greetingEvening": "Good evening, fighter! 👊",
   "home": {
-    "title": "FIGHT TIMER",
     "boxing": "BOXING",
-    "boxingTimer": "Boxing Timer",
-    "boxingDescription": "Rounds with rest",
     "tabata": "TABATA",
-    "tabataTimer": "Tabata Timer",
-    "tabataDescription": "High intensity intervals",
     "recent": "Recent",
-    "repeat": "Repeat",
     "recentEmpty": "Your workouts will appear here"
   },
   "tabs": {
@@ -34,27 +23,17 @@
     "restDuration": "Rest",
     "countdown": "Countdown",
     "countdownUnit": "sec",
-    "soundScheme": "Sound",
-    "bell": "Bell",
-    "beep": "Beep",
-    "whistle": "Whistle",
-    "presets": "Programs",
     "savePreset": "Save",
     "saveAsProgram": "Save as program",
     "presetName": "Program name",
-    "presetSaved": "Program saved",
     "noPresets": "No saved programs",
     "start": "START",
-    "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
     "confirmDelete": "Delete program?",
     "totalWorkout": "Total",
     "workoutDuration": "Duration",
-    "minutesShort": "min",
-    "roundsCalculated": "rounds",
-    "intervalsCalculated": "intervals",
-    "custom": "Custom"
+    "minutesShort": "min"
   },
   "timer": {
     "preparation": "GET READY",
@@ -63,18 +42,11 @@
     "last_interval": "LAST",
     "rest": "REST",
     "finished": "FINISHED",
-    "pause": "Pause",
-    "resume": "Resume",
-    "stop": "Stop",
     "stopConfirmTitle": "Stop workout?",
     "stopConfirmMessage": "Are you sure you want to stop?",
     "yes": "Yes",
     "no": "No",
     "elapsed": "Total",
-    "roundOf": "of",
-    "intervalOf": "of",
-    "interval_n_of_total": "%{current} of %{total}",
-    "totalTime": "Total time",
     "backHome": "Back to Home"
   },
   "result": {
@@ -83,9 +55,10 @@
     "roundsCompleted": "rounds",
     "intervalsCompleted": "intervals",
     "totalTime": "Total time",
-    "completed": "✅ Fully completed",
     "repeat": "Repeat",
-    "done": "Done"
+    "done": "Done",
+    "unavailableTitle": "No workout result",
+    "unavailableMessage": "Start or finish a workout to see results here."
   },
   "stats": {
     "title": "STATISTICS",
@@ -97,7 +70,6 @@
     "totalWorkouts": "Workouts",
     "activity": "Activity",
     "recent": "Recent workouts",
-    "rounds": "rounds",
     "empty": "No workouts yet",
     "hourShort": "h",
     "minuteShort": "m"
@@ -110,26 +82,20 @@
     "rounds": "rounds",
     "currentStreak": "Current streak",
     "bestStreak": "Best streak",
-    "days": "days",
     "badges": "Badges",
-    "earned": "✅ Earned",
-    "empty": "Work out to earn badges!"
+    "earned": "Earned"
   },
   "settingsScreen": {
     "title": "SETTINGS",
     "soundVibration": "Sound & Vibration",
-    "soundScheme": "Sound scheme",
     "testSound": "Test",
     "vibration": "Vibration",
     "timerSection": "Timer",
     "defaultCountdown": "Default countdown",
     "language": "Language",
-    "languageUkrainian": "Ukrainian",
-    "languageEnglish": "English",
     "myPrograms": "My Programs",
     "about": "About",
     "version": "Version",
-    "versionValue": "Fight Timer v%{version}",
     "contactDev": "Contact developer"
   }
 }

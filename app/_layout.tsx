@@ -95,8 +95,6 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="boxing/config" />
-          <Stack.Screen name="tabata/config" />
           <Stack.Screen
             name="timer"
             options={{

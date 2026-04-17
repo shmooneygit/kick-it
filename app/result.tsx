@@ -22,12 +22,8 @@ function badgeText(language: 'uk' | 'en', badge: BadgeDef): string {
   return language === 'uk' ? badge.name.uk : badge.name.en;
 }
 
-function getResultHeading(language: 'uk' | 'en', wasCompleted: boolean): string {
-  if (language === 'uk') {
-    return wasCompleted ? 'Тренування завершено' : 'Тренування зупинено';
-  }
-
-  return wasCompleted ? 'Workout completed' : 'Workout stopped';
+function getResultHeading(wasCompleted: boolean): string {
+  return wasCompleted ? t('result.title') : t('result.stoppedTitle');
 }
 
 export default function ResultScreen() {
@@ -48,7 +44,7 @@ export default function ResultScreen() {
   const recordId = Array.isArray(params.recordId) ? params.recordId[0] : params.recordId;
   const newBadgeIdsParam = Array.isArray(params.newBadgeIds) ? params.newBadgeIds[0] : params.newBadgeIds;
   const workoutRecord = useMemo(
-    () => history.find((item) => item.id === recordId) ?? history[0],
+    () => (recordId ? history.find((item) => item.id === recordId) : undefined),
     [history, recordId],
   );
   const earnedBadges = useMemo(() => {
@@ -61,33 +57,6 @@ export default function ResultScreen() {
       return [];
     }
   }, [getBadgesByIds, newBadgeIdsParam]);
-
-  const sessionResult = lastResult ?? (
-    workoutRecord
-      ? {
-          mode: workoutRecord.mode,
-          completedRounds: workoutRecord.completedRounds,
-          totalDuration: workoutRecord.totalDuration,
-          wasCompleted: workoutRecord.wasCompleted,
-        }
-      : createSessionResult(timerState, config.mode, timerState.phase === 'finished')
-  );
-
-  const accent = sessionResult.wasCompleted ? Colors.green : Colors.pink;
-  const dateLabel = workoutRecord
-    ? format(parseISO(workoutRecord.date), 'dd.MM.yyyy HH:mm')
-    : format(new Date(), 'dd.MM.yyyy HH:mm');
-  const resultConfig = workoutRecord?.config ?? config;
-  const roundsLabel =
-    sessionResult.mode === 'boxing' ? t('result.roundsCompleted') : t('result.intervalsCompleted');
-
-  const handleRepeat = () => {
-    const repeatConfig = workoutRecord?.config ?? config;
-    loadConfig(repeatConfig, workoutRecord?.presetId ?? null);
-    rememberLastConfig(repeatConfig);
-    clearLastResult();
-    router.replace('/timer' as Href);
-  };
 
   const handleDone = () => {
     clearLastResult();
@@ -104,6 +73,66 @@ export default function ResultScreen() {
     router.replace('/' as Href);
   };
 
+  const storedSessionResult = workoutRecord
+    ? {
+        mode: workoutRecord.mode,
+        completedRounds: workoutRecord.completedRounds,
+        totalDuration: workoutRecord.totalDuration,
+        wasCompleted: workoutRecord.wasCompleted,
+      }
+    : null;
+  const liveSessionResult =
+    timerState.totalElapsedSeconds > 0 || timerState.phase === 'finished'
+      ? createSessionResult(timerState, config.mode, timerState.phase === 'finished')
+      : null;
+  const sessionResult = lastResult ?? storedSessionResult ?? liveSessionResult;
+  const resultConfig = workoutRecord?.config ?? (sessionResult ? config : null);
+  const repeatConfig = workoutRecord?.config ?? (sessionResult ? config : null);
+
+  const handleRepeat = () => {
+    if (!repeatConfig) {
+      return;
+    }
+
+    loadConfig(repeatConfig, workoutRecord?.presetId ?? null);
+    rememberLastConfig(repeatConfig);
+    clearLastResult();
+    router.replace('/timer' as Href);
+  };
+
+  if (!sessionResult || !resultConfig) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 },
+        ]}
+      >
+        <View style={styles.content}>
+          <View style={[styles.statusBox, { borderColor: Colors.border }]}>
+            <Text style={[styles.statusMark, { color: Colors.textMuted }]}>?</Text>
+          </View>
+
+          <Text style={styles.heading}>{t('result.unavailableTitle')}</Text>
+          <Text style={styles.dateText}>{t('result.unavailableMessage')}</Text>
+        </View>
+
+        <View style={styles.buttons}>
+          <Pressable style={styles.primaryButton} onPress={handleDone}>
+            <Text style={styles.primaryButtonText}>{t('result.done')}</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  const accent = sessionResult.wasCompleted ? Colors.green : Colors.pink;
+  const dateLabel = workoutRecord
+    ? format(parseISO(workoutRecord.date), 'dd.MM.yyyy HH:mm')
+    : format(new Date(), 'dd.MM.yyyy HH:mm');
+  const roundsLabel =
+    sessionResult.mode === 'boxing' ? t('result.roundsCompleted') : t('result.intervalsCompleted');
+
   return (
     <View
       style={[
@@ -116,7 +145,7 @@ export default function ResultScreen() {
           <Text style={[styles.statusMark, { color: accent }]}>✓</Text>
         </View>
 
-        <Text style={styles.heading}>{getResultHeading(language, sessionResult.wasCompleted)}</Text>
+        <Text style={styles.heading}>{getResultHeading(sessionResult.wasCompleted)}</Text>
         <Text style={styles.dateText}>{dateLabel}</Text>
 
         <View style={styles.statsCard}>

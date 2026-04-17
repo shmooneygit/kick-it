@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useWorkoutStore } from '@/store/workout-store';
 import { WorkoutConfig, TimerPhase } from '@/lib/types';
+import { advanceTimerState, getNextPhase } from '@/lib/timer-transition';
 
 interface UseTimerCallbacks {
   onPhaseChange: (phase: TimerPhase, round: number) => void;
@@ -34,30 +35,6 @@ export function useTimer(config: WorkoutConfig, callbacks: UseTimerCallbacks) {
     }
   }, []);
 
-  const getNextPhase = useCallback(
-    (
-      currentPhase: TimerPhase,
-      currentRound: number,
-    ): { phase: TimerPhase; seconds: number; round: number } => {
-      const cfg = configRef.current;
-
-      switch (currentPhase) {
-        case 'countdown':
-          return { phase: 'work', seconds: cfg.workDuration, round: 1 };
-        case 'work':
-          if (currentRound >= cfg.rounds) {
-            return { phase: 'finished', seconds: 0, round: currentRound };
-          }
-          return { phase: 'rest', seconds: cfg.restDuration, round: currentRound };
-        case 'rest':
-          return { phase: 'work', seconds: cfg.workDuration, round: currentRound + 1 };
-        default:
-          return { phase: 'finished', seconds: 0, round: currentRound };
-      }
-    },
-    [],
-  );
-
   const tick = useCallback(() => {
     const state = stateRef.current;
     if (state.isPaused || !state.isRunning || state.phase === 'finished') {
@@ -70,7 +47,7 @@ export function useTimer(config: WorkoutConfig, callbacks: UseTimerCallbacks) {
 
     if (newSeconds <= 0) {
       // Phase transition
-      const next = getNextPhase(state.phase, state.currentRound);
+      const next = getNextPhase(configRef.current, state.phase, state.currentRound);
       setTimerState({
         phase: next.phase,
         secondsRemaining: next.seconds,
@@ -91,7 +68,7 @@ export function useTimer(config: WorkoutConfig, callbacks: UseTimerCallbacks) {
       });
       callbacksRef.current.onTick(newSeconds, state.phase, state.currentRound);
     }
-  }, [getNextPhase, setTimerState]);
+  }, [setTimerState]);
 
   // Drift-corrected interval using setTimeout chain
   const startTickLoop = useCallback(() => {
@@ -134,49 +111,29 @@ export function useTimer(config: WorkoutConfig, callbacks: UseTimerCallbacks) {
           }
 
           clearTimer();
-          let remaining = state.secondsRemaining - elapsed;
-          let currentPhase: TimerPhase = state.phase;
-          let currentRound = state.currentRound;
+          const nextState = advanceTimerState(configRef.current, state, elapsed);
 
-          // Fast-forward through phases if needed
-          while (remaining <= 0 && currentPhase !== 'finished') {
-            const next = getNextPhase(currentPhase, currentRound);
-            currentPhase = next.phase;
-            currentRound = next.round;
-            remaining += next.seconds;
-          }
-
-          // Cap totalElapsed at planned workout duration to prevent
-          // inflation when backgrounded longer than remaining workout time
-          const cfg = configRef.current;
-          const plannedDuration =
-            cfg.countdownDuration +
-            cfg.rounds * cfg.workDuration +
-            (cfg.rounds - 1) * cfg.restDuration;
-          const totalElapsed = Math.min(
-            state.totalElapsedSeconds + elapsed,
-            plannedDuration,
-          );
-
-          if (currentPhase === 'finished') {
+          if (nextState.didFinish) {
             setTimerState({
               phase: 'finished',
               secondsRemaining: 0,
-              currentRound,
-              totalElapsedSeconds: totalElapsed,
+              currentRound: nextState.currentRound,
+              totalElapsedSeconds: nextState.totalElapsedSeconds,
               isRunning: false,
             });
             lastTimerUpdateRef.current = Date.now();
             callbacksRef.current.onFinish();
           } else {
             setTimerState({
-              phase: currentPhase,
-              secondsRemaining: Math.max(0, remaining),
-              currentRound,
-              totalElapsedSeconds: totalElapsed,
+              phase: nextState.phase,
+              secondsRemaining: nextState.secondsRemaining,
+              currentRound: nextState.currentRound,
+              totalElapsedSeconds: nextState.totalElapsedSeconds,
             });
             lastTimerUpdateRef.current = Date.now();
-            callbacksRef.current.onPhaseChange(currentPhase, currentRound);
+            if (nextState.didChangePhase) {
+              callbacksRef.current.onPhaseChange(nextState.phase, nextState.currentRound);
+            }
             startTickLoop();
           }
         }
@@ -186,7 +143,7 @@ export function useTimer(config: WorkoutConfig, callbacks: UseTimerCallbacks) {
 
     const sub = AppState.addEventListener('change', handleAppState);
     return () => sub.remove();
-  }, [clearTimer, getNextPhase, setTimerState, startTickLoop]);
+  }, [clearTimer, setTimerState, startTickLoop]);
 
   const start = useCallback(() => {
     clearTimer();

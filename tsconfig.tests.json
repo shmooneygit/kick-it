@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "outDir": ".test-dist",
+    "rootDir": ".",
+    "noEmit": false,
+    "types": ["node"]
+  },
+  "include": [
+    "lib/badges.ts",
+    "lib/history-utils.ts",
+    "lib/session-result.ts",
+    "lib/timer-transition.ts",
+    "lib/types.ts",
+    "lib/workout-record.ts",
+    "tests/**/*.ts"
+  ]
+}
