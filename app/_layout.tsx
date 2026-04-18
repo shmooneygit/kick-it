@@ -55,6 +55,10 @@ export default function RootLayout() {
   i18n.locale = language;
 
   useEffect(() => {
+    console.log('Fonts loaded:', fontsLoaded);
+  }, [fontsLoaded]);
+
+  useEffect(() => {
     if (__DEV__ && Constants.appOwnership === 'expo') {
       console.warn(
         'Background timer audio will not work in Expo Go. Use a development build or production build for background-audio testing.',

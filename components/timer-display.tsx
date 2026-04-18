@@ -244,8 +244,6 @@ export function TimerDisplay({
     }),
     [size],
   );
-  const digitsFontSize = size >= 260 ? 110 : size >= 230 ? 102 : 96;
-  const digitsLineHeight = digitsFontSize + 4;
 
   const renderCounter = () => {
     if (phase === 'rest' && currentRound < totalRounds) {
@@ -315,16 +313,7 @@ export function TimerDisplay({
         </Svg>
 
         <View style={styles.ringCenter}>
-          <AnimatedText
-            style={[
-              styles.digits,
-              digitsAnimatedStyle,
-              {
-                fontSize: digitsFontSize,
-                lineHeight: digitsLineHeight,
-              },
-            ]}
-          >
+          <AnimatedText style={[styles.digits, digitsAnimatedStyle]}>
             {formatTime(secondsRemaining)}
           </AnimatedText>
         </View>
@@ -380,21 +369,21 @@ const styles = StyleSheet.create({
   ringCenter: {
     position: 'absolute',
     top: 0,
+    left: 0,
     right: 0,
     bottom: 0,
-    left: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
   digits: {
     fontFamily: FontFamily.timerDisplay,
-    fontSize: 96,
+    fontSize: 110,
     fontWeight: '700',
     letterSpacing: 4,
     color: Colors.green,
-    lineHeight: 100,
+    lineHeight: 114,
     textAlign: 'center',
+    textAlignVertical: 'center',
     includeFontPadding: false,
-    marginTop: -6,
   },
 });

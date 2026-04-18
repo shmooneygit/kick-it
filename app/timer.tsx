@@ -225,9 +225,9 @@ export default function TimerScreen() {
       }
 
       const shouldPlayFinalTick =
+        phase === 'countdown' &&
         secondsRemaining <= 3 &&
-        secondsRemaining > 0 &&
-        (!isTabata || phase === 'countdown' || phase === 'work' || phase === 'rest');
+        secondsRemaining > 0;
 
       if (shouldPlayFinalTick) {
         play('tick', { mode: config.mode });

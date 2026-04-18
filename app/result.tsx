@@ -191,6 +191,23 @@ export default function ResultScreen() {
     router.replace('/timer' as Href);
   };
 
+  const statusScale = useSharedValue(0.72);
+
+  useEffect(() => {
+    statusScale.value = withDelay(
+      80,
+      withSpring(1, {
+        damping: 10,
+        stiffness: 180,
+        mass: 0.75,
+      }),
+    );
+  }, [statusScale]);
+
+  const statusAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: statusScale.value }],
+  }));
+
   if (!sessionResult || !resultConfig) {
     return (
       <View
@@ -223,22 +240,6 @@ export default function ResultScreen() {
     : format(new Date(), 'dd.MM.yyyy HH:mm');
   const roundsLabel =
     sessionResult.mode === 'boxing' ? t('result.roundsCompleted') : t('result.intervalsCompleted');
-  const statusScale = useSharedValue(0.72);
-
-  useEffect(() => {
-    statusScale.value = withDelay(
-      80,
-      withSpring(1, {
-        damping: 10,
-        stiffness: 180,
-        mass: 0.75,
-      }),
-    );
-  }, [statusScale]);
-
-  const statusAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: statusScale.value }],
-  }));
 
   return (
     <View
