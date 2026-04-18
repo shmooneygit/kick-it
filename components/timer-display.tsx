@@ -107,7 +107,7 @@ export function TimerDisplay({
   isPaused,
 }: TimerDisplayProps) {
   const language = useSettingsStore((s) => s.language);
-  void isPaused;
+  void totalElapsed;
 
   const { width } = useWindowDimensions();
   const isLastTabataInterval =
@@ -290,17 +290,13 @@ export function TimerDisplay({
           />
         </Svg>
 
-        <View style={styles.ringCenter}>
-          <AnimatedText style={[styles.digits, digitsAnimatedStyle]}>
-            {formatTime(secondsRemaining)}
-          </AnimatedText>
-        </View>
+      <View style={styles.ringCenter}>
+        <AnimatedText style={[styles.digits, digitsAnimatedStyle]}>
+          {formatTime(secondsRemaining)}
+        </AnimatedText>
       </View>
-
-      <Text style={styles.elapsed}>
-        {`${t('timer.elapsed')}: ${formatTime(totalElapsed)}`}
-      </Text>
     </View>
+  </View>
   );
 }
 
@@ -361,10 +357,5 @@ const styles = StyleSheet.create({
     color: Colors.green,
     lineHeight: 80,
     textAlign: 'center',
-  },
-  elapsed: {
-    fontFamily: FontFamily.body,
-    fontSize: 11,
-    color: Colors.textMuted,
   },
 });

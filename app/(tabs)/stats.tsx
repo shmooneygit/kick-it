@@ -1,76 +1,126 @@
-import { View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useMemo, useState, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, Href } from 'expo-router';
+import { format, isAfter, parseISO, subMonths, subWeeks } from 'date-fns';
 import { useHistoryStore } from '@/store/history-store';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { WorkoutRecord } from '@/lib/types';
 import { formatConfigShorthand, formatTime, getPresetLabel } from '@/lib/format';
-import {
-  Colors,
-  FontFamily,
-  Spacing,
-  withOpacity,
-} from '@/constants/theme';
+import { Colors, FontFamily, Spacing, withOpacity } from '@/constants/theme';
 import { t } from '@/lib/i18n';
-import {
-  subWeeks,
-  subMonths,
-  parseISO,
-  isAfter,
-  format,
-  startOfDay,
-  eachDayOfInterval,
-  subDays,
-} from 'date-fns';
 
 type Period = 'week' | 'month' | 'all';
 
+function formatDurationClock(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+
+  return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds
+    .toString()
+    .padStart(2, '0')}`;
+}
+
+function getWeekdayIndex(date: Date): number {
+  return (date.getDay() + 6) % 7;
+}
+
 export default function StatsScreen() {
-  useSettingsStore((s) => s.language);
+  const language = useSettingsStore((s) => s.language);
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const history = useHistoryStore((s) => s.history);
+  const stats = useHistoryStore((s) => s.stats);
   const loadConfig = useWorkoutStore((s) => s.loadConfig);
   const rememberLastConfig = useWorkoutStore((s) => s.rememberLastConfig);
   const [period, setPeriod] = useState<Period>('all');
 
   const filtered = useMemo(() => {
-    if (period === 'all') return history;
+    if (period === 'all') {
+      return history;
+    }
+
     const cutoff = period === 'week' ? subWeeks(new Date(), 1) : subMonths(new Date(), 1);
     return history.filter((workout) => isAfter(parseISO(workout.date), cutoff));
   }, [history, period]);
 
   const periodStats = useMemo(() => {
+    if (period === 'all') {
+      return {
+        totalTime: stats.totalDuration,
+        totalRounds: stats.totalRounds,
+        count: stats.totalWorkouts,
+      };
+    }
+
     let totalTime = 0;
     let totalRounds = 0;
+
     for (const workout of filtered) {
       totalTime += workout.totalDuration;
       totalRounds += workout.completedRounds;
     }
+
     return { totalTime, totalRounds, count: filtered.length };
-  }, [filtered]);
+  }, [filtered, period, stats.totalDuration, stats.totalRounds, stats.totalWorkouts]);
 
-  const activityDays = useMemo(() => {
-    const today = startOfDay(new Date());
-    const start = subDays(today, 83);
-    const days = eachDayOfInterval({ start, end: today });
-    const todayKey = format(today, 'yyyy-MM-dd');
-    const workoutCounts = new Map<string, number>();
-
-    for (const workout of history) {
-      const key = format(parseISO(workout.date), 'yyyy-MM-dd');
-      workoutCounts.set(key, (workoutCounts.get(key) ?? 0) + 1);
+  const averageMinutes = useMemo(() => {
+    if (periodStats.count === 0) {
+      return '—';
     }
 
-    return days.map((date) => ({
-      date: format(date, 'yyyy-MM-dd'),
-      count: workoutCounts.get(format(date, 'yyyy-MM-dd')) ?? 0,
-      isToday: format(date, 'yyyy-MM-dd') === todayKey,
-    }));
-  }, [history]);
+    return (periodStats.totalTime / periodStats.count / 60).toFixed(1);
+  }, [periodStats.count, periodStats.totalTime]);
+
+  const weekdayLabels = useMemo(
+    () => [
+      t('stats.mon'),
+      t('stats.tue'),
+      t('stats.wed'),
+      t('stats.thu'),
+      t('stats.fri'),
+      t('stats.sat'),
+      t('stats.sun'),
+    ],
+    [language],
+  );
+
+  const weeklyBars = useMemo(() => {
+    const totals = Array.from({ length: 7 }, () => 0);
+
+    for (const workout of filtered) {
+      const weekdayIndex = getWeekdayIndex(parseISO(workout.date));
+      totals[weekdayIndex] += workout.totalDuration / 60;
+    }
+
+    const maxMinutes = Math.max(...totals, 0);
+    const todayIndex = getWeekdayIndex(new Date());
+
+    return totals.map((minutes, index) => {
+      const intensity = maxMinutes > 0 ? minutes / maxMinutes : 0;
+
+      return {
+        key: weekdayLabels[index],
+        label: weekdayLabels[index],
+        isToday: index === todayIndex,
+        height: minutes > 0 ? Math.max(intensity * 80, 12) : 4,
+        backgroundColor:
+          minutes > 0
+            ? withOpacity(Colors.green, 0.3 + intensity * 0.7)
+            : Colors.track,
+      };
+    });
+  }, [filtered, weekdayLabels]);
+
+  const periods: { key: Period; label: string }[] = [
+    { key: 'week', label: t('stats.week') },
+    { key: 'month', label: t('stats.month') },
+    { key: 'all', label: t('stats.allTime') },
+  ];
 
   const handleRepeat = useCallback(
     (record: WorkoutRecord) => {
@@ -80,28 +130,6 @@ export default function StatsScreen() {
     },
     [loadConfig, rememberLastConfig, router],
   );
-
-  const renderWorkout = useCallback(
-    ({ item }: { item: WorkoutRecord }) => {
-      return (
-        <Pressable style={styles.workoutCard} onPress={() => handleRepeat(item)}>
-          <View style={styles.workoutInfo}>
-            <Text style={styles.workoutTitle}>{getPresetLabel(item)}</Text>
-            <Text style={styles.workoutMeta}>{formatConfigShorthand(item)}</Text>
-          </View>
-          <Text style={styles.workoutDuration}>{formatTime(item.totalDuration)}</Text>
-          <Text style={styles.repeatIcon}>▶</Text>
-        </Pressable>
-      );
-    },
-    [handleRepeat],
-  );
-
-  const periods: { key: Period; label: string }[] = [
-    { key: 'week', label: t('stats.week') },
-    { key: 'month', label: t('stats.month') },
-    { key: 'all', label: t('stats.allTime') },
-  ];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
@@ -121,64 +149,111 @@ export default function StatsScreen() {
         ))}
       </View>
 
-      <View style={styles.metricsRow}>
+      <View style={styles.heroCard}>
+        <Text style={styles.heroLabel}>{t('stats.totalTime').toUpperCase()}</Text>
+        <Text style={styles.heroValue}>{formatDurationClock(periodStats.totalTime)}</Text>
+        <Text style={styles.heroMeta}>{t('stats.timeUnits')}</Text>
+      </View>
+
+      <View style={styles.metricsGrid}>
         <View style={styles.metricCard}>
-          <Text style={styles.metricLabel}>{t('stats.totalTime').toUpperCase()}</Text>
-          <Text style={styles.metricValue}>
-            {formatTime(periodStats.totalTime, { style: 'summary' })}
-          </Text>
-        </View>
-        <View style={styles.metricCard}>
-          <Text style={styles.metricLabel}>{t('stats.totalRounds').toUpperCase()}</Text>
           <Text style={styles.metricValue}>{periodStats.totalRounds}</Text>
+          <Text style={styles.metricLabel}>{t('stats.totalRounds').toUpperCase()}</Text>
         </View>
         <View style={styles.metricCard}>
-          <Text style={styles.metricLabel}>{t('stats.totalWorkouts').toUpperCase()}</Text>
           <Text style={styles.metricValue}>{periodStats.count}</Text>
+          <Text style={styles.metricLabel}>{t('stats.totalWorkouts').toUpperCase()}</Text>
+        </View>
+        <View style={styles.metricCard}>
+          <Text style={styles.metricValue}>{averageMinutes}</Text>
+          <Text style={styles.metricLabel}>{t('stats.averageMinutes').toUpperCase()}</Text>
         </View>
       </View>
 
-      <View style={styles.gridSection}>
-        <Text style={styles.sectionLabel}>{t('stats.activity').toUpperCase()}</Text>
-        <View style={styles.gridContainer}>
-          <View style={styles.grid}>
-            {activityDays.map((day) => (
-              <View
-                key={day.date}
-                style={[
-                  styles.gridCell,
-                  day.count > 0
-                    ? { backgroundColor: withOpacity(Colors.green, Math.min(0.3 + day.count * 0.2, 1)) }
-                    : styles.gridCellInactive,
-                  day.isToday && styles.gridCellToday,
-                ]}
-              />
-            ))}
+      <Text style={styles.sectionLabel}>{t('stats.activity').toUpperCase()}</Text>
+      <View style={styles.chartCard}>
+        <View style={styles.chartRow}>
+          {weeklyBars.map((bar) => (
+            <View key={bar.key} style={styles.chartColumn}>
+              <View style={styles.chartTrack}>
+                <View
+                  style={[
+                    styles.chartBar,
+                    {
+                      height: bar.height,
+                      backgroundColor: bar.backgroundColor,
+                    },
+                    bar.isToday && styles.chartBarToday,
+                  ]}
+                />
+              </View>
+              <Text style={[styles.chartLabel, bar.isToday && styles.chartLabelToday]}>
+                {bar.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.historySection}>
+        <Text style={styles.sectionLabel}>{t('stats.recent').toUpperCase()}</Text>
+        {filtered.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>{t('stats.empty')}</Text>
           </View>
-        </View>
-      </View>
+        ) : (
+          <ScrollView
+            style={styles.historyScroll}
+            contentContainerStyle={styles.historyContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {filtered.map((workout) => {
+              const modeLabel =
+                workout.mode === 'boxing' ? t('home.boxing') : t('home.tabata');
+              const configParts = [
+                modeLabel,
+                formatConfigShorthand(workout),
+                `${t('stats.restShort')} ${formatTime(workout.config.restDuration)}`,
+                !workout.wasCompleted ? t('stats.stopped') : null,
+              ].filter(Boolean);
 
-      <Text style={styles.sectionLabel}>{t('stats.recent').toUpperCase()}</Text>
-      {filtered.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyText}>{t('stats.empty')}</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filtered.slice(0, 20)}
-          keyExtractor={(item) => item.id}
-          renderItem={renderWorkout}
-          showsVerticalScrollIndicator={false}
-          style={styles.list}
-        />
-      )}
+              return (
+                <Pressable
+                  key={workout.id}
+                  style={[styles.historyRow, !workout.wasCompleted && styles.historyRowStopped]}
+                  onPress={() => handleRepeat(workout)}
+                >
+                  <View style={styles.historyTopRow}>
+                    <Text style={styles.historyTitle} numberOfLines={1}>
+                      {getPresetLabel(workout)}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.historyDuration,
+                        !workout.wasCompleted && styles.historyDurationStopped,
+                      ]}
+                    >
+                      {formatTime(workout.totalDuration)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.historyBottomRow}>
+                    <Text style={styles.historyMeta} numberOfLines={1}>
+                      {configParts.join(' · ')}
+                    </Text>
+                    <Text style={styles.historyDate}>
+                      {format(parseISO(workout.date), 'dd.MM.yyyy HH:mm')}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+      </View>
     </View>
   );
 }
-
-const GRID_SIZE = 12;
-const GRID_GAP = 3;
-const GRID_WIDTH = GRID_SIZE * 12 + GRID_GAP * 11;
 
 const styles = StyleSheet.create({
   container: {
@@ -191,8 +266,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textPrimary,
     letterSpacing: 1,
-    marginBottom: 14,
     textAlign: 'center',
+    marginBottom: 14,
   },
   periodRow: {
     flexDirection: 'row',
@@ -202,24 +277,52 @@ const styles = StyleSheet.create({
   },
   periodPill: {
     flex: 1,
+    backgroundColor: Colors.background,
     paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.background,
   },
   periodPillActive: {
     backgroundColor: Colors.green,
   },
   periodText: {
-    fontFamily: FontFamily.body,
+    fontFamily: FontFamily.bodySemiBold,
     fontSize: 10,
     color: Colors.textMeta,
     letterSpacing: 1,
   },
   periodTextActive: {
     color: Colors.background,
+    fontFamily: FontFamily.bodyBold,
   },
-  metricsRow: {
+  heroCard: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  heroLabel: {
+    fontFamily: FontFamily.body,
+    fontSize: 9,
+    color: Colors.textMeta,
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  heroValue: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 36,
+    color: Colors.green,
+    lineHeight: 40,
+    textAlign: 'center',
+  },
+  heroMeta: {
+    marginTop: 6,
+    fontFamily: FontFamily.body,
+    fontSize: 10,
+    color: Colors.textMuted,
+  },
+  metricsGrid: {
     flexDirection: 'row',
     gap: 8,
     marginBottom: 16,
@@ -228,9 +331,16 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: 10,
+    padding: 12,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  metricValue: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 24,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 6,
   },
   metricLabel: {
     fontFamily: FontFamily.body,
@@ -238,85 +348,111 @@ const styles = StyleSheet.create({
     color: Colors.textMeta,
     letterSpacing: 1,
     textAlign: 'center',
-    marginBottom: 6,
-  },
-  metricValue: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 18,
-    color: Colors.textPrimary,
-    textAlign: 'center',
-  },
-  gridSection: {
-    marginBottom: 16,
   },
   sectionLabel: {
     fontFamily: FontFamily.body,
-    fontSize: 10,
+    fontSize: 9,
     color: Colors.textMeta,
     letterSpacing: 1,
     marginBottom: 8,
   },
-  gridContainer: {
+  chartCard: {
     borderWidth: 1,
     borderColor: Colors.border,
     padding: 12,
+    marginBottom: 16,
   },
-  grid: {
+  chartRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: GRID_GAP,
-    width: GRID_WIDTH,
-    alignSelf: 'center',
+    alignItems: 'flex-end',
+    gap: 4,
   },
-  gridCell: {
-    width: GRID_SIZE,
-    height: GRID_SIZE,
+  chartColumn: {
+    flex: 1,
+    alignItems: 'center',
   },
-  gridCellInactive: {
+  chartTrack: {
+    height: 80,
+    width: '100%',
+    justifyContent: 'flex-end',
+  },
+  chartBar: {
+    width: '100%',
+    minHeight: 4,
     backgroundColor: Colors.track,
   },
-  gridCellToday: {
+  chartBarToday: {
     borderWidth: 1,
     borderColor: Colors.green,
   },
-  list: {
+  chartLabel: {
+    marginTop: 6,
+    fontFamily: FontFamily.body,
+    fontSize: 8,
+    color: Colors.textMeta,
+    textAlign: 'center',
+  },
+  chartLabelToday: {
+    color: Colors.green,
+  },
+  historySection: {
     flex: 1,
   },
-  workoutCard: {
+  historyScroll: {
+    flex: 1,
+  },
+  historyContent: {
+    paddingBottom: 12,
+  },
+  historyRow: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 6,
+  },
+  historyRowStopped: {
+    opacity: 0.6,
+  },
+  historyTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.hairline,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    justifyContent: 'space-between',
+    gap: 10,
     marginBottom: 6,
-    gap: 8,
   },
-  workoutInfo: {
+  historyTitle: {
     flex: 1,
-  },
-  workoutTitle: {
     fontFamily: FontFamily.bodySemiBold,
     fontSize: 13,
     color: Colors.textPrimary,
   },
-  workoutMeta: {
-    fontFamily: FontFamily.body,
-    fontSize: 11,
-    color: Colors.textSecondary,
-    marginTop: 2,
+  historyDuration: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 12,
+    color: Colors.green,
   },
-  workoutDuration: {
+  historyDurationStopped: {
+    color: Colors.pink,
+  },
+  historyBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  historyMeta: {
+    flex: 1,
+    fontFamily: FontFamily.body,
+    fontSize: 10,
+    color: Colors.textMeta,
+  },
+  historyDate: {
     fontFamily: FontFamily.body,
     fontSize: 10,
     color: Colors.textMuted,
   },
-  repeatIcon: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 10,
-    color: Colors.green,
-  },
-  empty: {
+  emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -325,5 +461,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.body,
     fontSize: 13,
     color: Colors.textMuted,
+    textAlign: 'center',
   },
 });

@@ -1,4 +1,4 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { useEffect } from 'react';
 import Animated, {
   Easing,
@@ -16,6 +16,9 @@ interface ConfirmSheetProps {
   confirmLabel: string;
   cancelLabel: string;
   confirmTone?: 'danger' | 'default';
+  layout?: 'sheet' | 'centered';
+  overlayColor?: string;
+  cardStyle?: StyleProp<ViewStyle>;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -27,6 +30,9 @@ export function ConfirmSheet({
   confirmLabel,
   cancelLabel,
   confirmTone = 'default',
+  layout = 'sheet',
+  overlayColor = 'rgba(8, 8, 16, 0.8)',
+  cardStyle,
   onConfirm,
   onCancel,
 }: ConfirmSheetProps) {
@@ -55,18 +61,28 @@ export function ConfirmSheet({
     opacity: overlayOpacity.value,
   }));
 
-  const cardStyle = useAnimatedStyle(() => ({
+  const animatedCardStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
 
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={onCancel}>
-      <View style={styles.root}>
+      <View style={[styles.root, layout === 'centered' ? styles.rootCentered : styles.rootSheet]}>
         <Animated.View style={[styles.overlay, overlayStyle]}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={onCancel} />
+          <Pressable
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: overlayColor }]}
+            onPress={onCancel}
+          />
         </Animated.View>
 
-        <Animated.View style={[styles.card, cardStyle]}>
+        <Animated.View
+          style={[
+            styles.card,
+            layout === 'centered' ? styles.cardCentered : styles.cardSheet,
+            animatedCardStyle,
+            cardStyle,
+          ]}
+        >
           <Text style={styles.title}>{title}</Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
@@ -92,15 +108,18 @@ export function ConfirmSheet({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  rootSheet: {
     justifyContent: 'flex-end',
+  },
+  rootCentered: {
+    justifyContent: 'center',
+    paddingHorizontal: 16,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8, 8, 16, 0.8)',
   },
   card: {
-    marginHorizontal: 16,
-    marginBottom: 16,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: '#2A2A3F',
@@ -108,6 +127,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 22,
     paddingBottom: 18,
+  },
+  cardSheet: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  cardCentered: {
+    width: '100%',
+    maxWidth: 360,
+    alignSelf: 'center',
   },
   title: {
     fontFamily: FontFamily.heading,

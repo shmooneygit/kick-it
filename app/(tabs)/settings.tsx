@@ -10,6 +10,7 @@ import {
 import Constants from 'expo-constants';
 import { useCallback, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHistoryStore } from '@/store/history-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { usePresets } from '@/hooks/use-presets';
 import { ConfirmSheet } from '@/components/confirm-sheet';
@@ -22,10 +23,12 @@ export default function SettingsScreen() {
   const language = useSettingsStore((s) => s.language);
   const update = useSettingsStore((s) => s.update);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
+  const clearAllHistory = useHistoryStore((s) => s.clearAll);
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
   const { userPresets: boxingPresets, deletePreset: deleteBoxing } = usePresets('boxing');
   const { userPresets: tabataPresets, deletePreset: deleteTabata } = usePresets('tabata');
   const [presetToDelete, setPresetToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [showClearHistoryModal, setShowClearHistoryModal] = useState(false);
   const allUserPresets = useMemo(
     () => [...boxingPresets, ...tabataPresets],
     [boxingPresets, tabataPresets],
@@ -67,6 +70,11 @@ export default function SettingsScreen() {
     setPresetToDelete(null);
   }, [allUserPresets, deleteBoxing, deleteTabata, presetToDelete]);
 
+  const handleClearHistoryConfirm = useCallback(async () => {
+    setShowClearHistoryModal(false);
+    await clearAllHistory();
+  }, [clearAllHistory]);
+
   return (
     <View
       style={[
@@ -88,6 +96,20 @@ export default function SettingsScreen() {
         confirmTone="danger"
         onConfirm={confirmDeletePreset}
         onCancel={() => setPresetToDelete(null)}
+      />
+      <ConfirmSheet
+        visible={showClearHistoryModal}
+        title={t('settingsScreen.clearHistoryConfirm')}
+        confirmLabel={t('timer.yes').toUpperCase()}
+        cancelLabel={t('timer.no').toUpperCase()}
+        confirmTone="danger"
+        layout="centered"
+        cardStyle={styles.clearHistoryCard}
+        overlayColor="rgba(0, 0, 0, 0.8)"
+        onConfirm={() => {
+          void handleClearHistoryConfirm();
+        }}
+        onCancel={() => setShowClearHistoryModal(false)}
       />
 
       <ScrollView
@@ -153,6 +175,13 @@ export default function SettingsScreen() {
               );
             })
           )}
+        </View>
+
+        <Text style={styles.sectionLabel}>{t('settingsScreen.data').toUpperCase()}</Text>
+        <View style={styles.group}>
+          <Pressable style={styles.row} onPress={() => setShowClearHistoryModal(true)}>
+            <Text style={[styles.label, styles.dangerLabel]}>{t('settingsScreen.clearHistory')}</Text>
+          </Pressable>
         </View>
 
         <Text style={styles.sectionLabel}>{t('settingsScreen.about').toUpperCase()}</Text>
@@ -236,6 +265,13 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.body,
     fontSize: 13,
     color: Colors.textMuted,
+  },
+  dangerLabel: {
+    color: Colors.pink,
+  },
+  clearHistoryCard: {
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
   },
   segmented: {
     flexDirection: 'row',
