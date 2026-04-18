@@ -45,6 +45,7 @@ const DISPLAY_GLOW_COLORS = [
   withOpacity(Colors.amber, 0.22),
   withOpacity(Colors.finished, 0),
 ];
+const TIMER_DIGIT_FONT_SIZE = 110;
 
 interface TimerDisplayProps {
   secondsRemaining: number;
@@ -216,6 +217,9 @@ export function TimerDisplay({
 
   const digitsAnimatedStyle = useAnimatedStyle(() => ({
     color: interpolateColor(colorProgress.value, [0, 1, 2, 3, 4], DISPLAY_COLORS),
+  }));
+
+  const digitsPulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
   }));
 
@@ -313,9 +317,11 @@ export function TimerDisplay({
         </Svg>
 
         <View style={styles.ringCenter}>
-          <AnimatedText style={[styles.digits, digitsAnimatedStyle]}>
-            {formatTime(secondsRemaining)}
-          </AnimatedText>
+          <AnimatedView style={digitsPulseStyle}>
+            <AnimatedText style={[styles.digits, digitsAnimatedStyle]}>
+              {formatTime(secondsRemaining)}
+            </AnimatedText>
+          </AnimatedView>
         </View>
       </View>
     </View>
@@ -377,11 +383,10 @@ const styles = StyleSheet.create({
   },
   digits: {
     fontFamily: FontFamily.timerDisplay,
-    fontSize: 110,
-    fontWeight: '700',
+    fontSize: TIMER_DIGIT_FONT_SIZE,
     letterSpacing: 4,
     color: Colors.green,
-    lineHeight: 114,
+    lineHeight: TIMER_DIGIT_FONT_SIZE,
     textAlign: 'center',
     textAlignVertical: 'center',
     includeFontPadding: false,

@@ -62,7 +62,6 @@ export const FontSize = {
   lg: 16,
   xl: 18,
   xxl: 22,
-  timer: 120,
 } as const;
 
 export function getPhaseColor(phase: TimerPhase): string {
