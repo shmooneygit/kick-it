@@ -8,9 +8,7 @@ export type HapticEvent =
   | 'warningTick'
   | 'workoutComplete'
   | 'stepper'
-  | 'start'
-  | 'lockedTap'
-  | 'unlock';
+  | 'start';
 
 type HapticPattern =
   | {
@@ -147,16 +145,9 @@ export function triggerHapticEvent(event: HapticEvent) {
     case 'warningStart':
     case 'warningTick':
     case 'start':
-    case 'unlock':
       triggerPattern({
         type: 'impact',
         style: Haptics.ImpactFeedbackStyle.Medium,
-      });
-      return;
-    case 'lockedTap':
-      triggerPattern({
-        type: 'impact',
-        style: Haptics.ImpactFeedbackStyle.Light,
       });
       return;
     case 'workoutComplete':

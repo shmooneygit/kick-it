@@ -27,7 +27,6 @@ import {
   savePersistedSession,
 } from '@/lib/session-persistence';
 import { ConfirmSheet } from '@/components/confirm-sheet';
-import { SessionLockStrip } from '@/components/session-lock-strip';
 import { TimerDisplay } from '@/components/timer-display';
 import { ControlButtons } from '@/components/control-buttons';
 import { TimerMode, TimerPhase, TimerState, UserPreset, WorkoutConfig } from '@/lib/types';
@@ -145,10 +144,7 @@ export default function TimerScreen() {
   const startedRef = useRef(false);
   const savedRef = useRef(false);
   const savedRouteParamsRef = useRef<{ recordId: string; newBadgeIds?: string } | null>(null);
-  const unlockCelebrationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showStopModal, setShowStopModal] = useState(false);
-  const [sessionUnlocked, setSessionUnlocked] = useState(true);
-  const [showUnlockCelebration, setShowUnlockCelebration] = useState(false);
   const activePresetNameRef = useRef<string | undefined>(undefined);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const previousPhaseRef = useRef<TimerPhase | null>(null);
@@ -170,7 +166,6 @@ export default function TimerScreen() {
       }
 
       await savePersistedSession(snapshot);
-      setRecoverableSession(snapshot);
     },
     [activePresetId, config, setRecoverableSession],
   );
@@ -258,10 +253,6 @@ export default function TimerScreen() {
     timerState.phase === 'work' &&
     timerState.secondsRemaining > 0 &&
     timerState.secondsRemaining <= 10;
-  const lockRequired =
-    timerState.isRunning &&
-    !timerState.isPaused &&
-    timerState.phase !== 'finished';
   const phaseAccentProgress = useSharedValue(
     getPhaseAccentIndex(timerState.phase, isWarning),
   );
@@ -290,7 +281,7 @@ export default function TimerScreen() {
     return () => {
       cancelled = true;
     };
-  }, [getActivePresetName]);
+  }, [getActivePresetName, persistSessionSnapshot]);
 
   useEffect(() => {
     if (startedRef.current) {
@@ -344,9 +335,6 @@ export default function TimerScreen() {
 
   useEffect(() => {
     return () => {
-      if (unlockCelebrationTimeoutRef.current) {
-        clearTimeout(unlockCelebrationTimeoutRef.current);
-      }
       void stopKeepAlive();
     };
   }, [stopKeepAlive]);
@@ -369,7 +357,10 @@ export default function TimerScreen() {
   }, []);
 
   useEffect(() => {
-    if (appStateRef.current !== 'active' || !shouldKeepScreenAwake(timerState)) {
+    const keepAwakeActive =
+      timerState.isRunning && !timerState.isPaused && timerState.phase !== 'finished';
+
+    if (appStateRef.current !== 'active' || !keepAwakeActive) {
       void deactivateKeepAwake(KEEP_AWAKE_TAG);
       return;
     }
@@ -378,15 +369,17 @@ export default function TimerScreen() {
   }, [timerState.isPaused, timerState.isRunning, timerState.phase]);
 
   useEffect(() => {
+    const currentTimerState = useWorkoutStore.getState().timerState;
+
     if (!startedRef.current) {
       return;
     }
 
-    if (!timerState.isRunning || timerState.phase === 'finished') {
+    if (!currentTimerState.isRunning || currentTimerState.phase === 'finished') {
       return;
     }
 
-    void persistSessionSnapshot(timerState);
+    void persistSessionSnapshot(currentTimerState);
   }, [
     persistSessionSnapshot,
     timerState.currentRound,
@@ -428,21 +421,6 @@ export default function TimerScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!lockRequired) {
-      if (unlockCelebrationTimeoutRef.current) {
-        clearTimeout(unlockCelebrationTimeoutRef.current);
-        unlockCelebrationTimeoutRef.current = null;
-      }
-      setSessionUnlocked(true);
-      setShowUnlockCelebration(false);
-      return;
-    }
-
-    setSessionUnlocked(false);
-    setShowUnlockCelebration(false);
-  }, [lockRequired]);
-
   const handlePauseResume = () => {
     if (timerState.isPaused) {
       void startKeepAlive();
@@ -452,23 +430,6 @@ export default function TimerScreen() {
       void stopKeepAlive();
     }
   };
-
-  const handleLockedPress = useCallback(() => {
-    triggerHapticEvent('lockedTap');
-  }, []);
-
-  const handleUnlock = useCallback(() => {
-    triggerHapticEvent('unlock');
-    setSessionUnlocked(true);
-    setShowUnlockCelebration(true);
-    if (unlockCelebrationTimeoutRef.current) {
-      clearTimeout(unlockCelebrationTimeoutRef.current);
-    }
-    unlockCelebrationTimeoutRef.current = setTimeout(() => {
-      setShowUnlockCelebration(false);
-      unlockCelebrationTimeoutRef.current = null;
-    }, 320);
-  }, []);
 
   const backgroundTintStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
@@ -597,18 +558,9 @@ export default function TimerScreen() {
         <ControlButtons
           isPaused={timerState.isPaused}
           isFinished={timerState.phase === 'finished'}
-          isLocked={lockRequired && !sessionUnlocked}
           onPauseResume={handlePauseResume}
           onStop={handleStop}
           onHome={handleHome}
-          onLockedPress={handleLockedPress}
-        />
-
-        <SessionLockStrip
-          visible={(lockRequired && !sessionUnlocked) || showUnlockCelebration}
-          locked={lockRequired && !sessionUnlocked}
-          onUnlock={handleUnlock}
-          onLockedPress={handleLockedPress}
         />
 
         <View style={styles.infoBar}>

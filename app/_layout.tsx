@@ -2,7 +2,6 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Constants from 'expo-constants';
 import * as SplashScreen from 'expo-splash-screen';
 import {
@@ -87,7 +86,7 @@ export default function RootLayout() {
   if (!isReady) return null;
 
   return (
-    <GestureHandlerRootView
+    <View
       key={language}
       style={{ flex: 1, backgroundColor: Colors.background }}
       onLayout={onLayoutRootView}
@@ -125,6 +124,6 @@ export default function RootLayout() {
       </ErrorBoundary>
       <ResumeWorkoutBanner />
       <StatusBar style="light" />
-    </GestureHandlerRootView>
+    </View>
   );
 }
