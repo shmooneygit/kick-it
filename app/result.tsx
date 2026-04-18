@@ -196,7 +196,7 @@ export default function ResultScreen() {
       <View
         style={[
           styles.container,
-          { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 },
+          { paddingTop: insets.top + 24 },
         ]}
       >
         <View style={styles.content}>
@@ -208,7 +208,7 @@ export default function ResultScreen() {
           <Text style={styles.dateText}>{t('result.unavailableMessage')}</Text>
         </View>
 
-        <View style={styles.buttons}>
+        <View style={[styles.buttons, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <Pressable style={styles.primaryButton} onPress={handleDone}>
             <Text style={styles.primaryButtonText}>{t('result.done')}</Text>
           </Pressable>
@@ -244,7 +244,7 @@ export default function ResultScreen() {
     <View
       style={[
         styles.container,
-        { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 },
+        { paddingTop: insets.top + 24 },
       ]}
     >
       <View style={styles.content}>
@@ -301,7 +301,7 @@ export default function ResultScreen() {
         )}
       </View>
 
-      <View style={styles.buttons}>
+      <View style={[styles.buttons, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <Pressable style={styles.secondaryButton} onPress={handleRepeat}>
           <Text style={styles.secondaryButtonText}>{t('result.repeat')}</Text>
         </Pressable>

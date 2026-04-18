@@ -534,7 +534,7 @@ export default function TimerScreen() {
     <View
       style={[
         styles.container,
-        { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 },
+        { paddingTop: insets.top + 8, paddingBottom: Math.max(insets.bottom, 12) },
       ]}
     >
       <Animated.View

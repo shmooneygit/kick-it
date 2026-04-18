@@ -15,6 +15,7 @@ import {
   Exo2_600SemiBold,
   Exo2_700Bold,
 } from '@expo-google-fonts/exo-2';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { ResumeWorkoutBanner } from '@/components/resume-workout-banner';
@@ -86,44 +87,46 @@ export default function RootLayout() {
   if (!isReady) return null;
 
   return (
-    <View
-      key={language}
-      style={{ flex: 1, backgroundColor: Colors.background }}
-      onLayout={onLayoutRootView}
-    >
-      <ErrorBoundary>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: Colors.background },
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen
-            name="timer"
-            options={{
-              presentation: 'card',
-              animation: 'fade',
-              animationDuration: 180,
-              animationTypeForReplace: 'push',
-              gestureEnabled: false,
+    <SafeAreaProvider>
+      <View
+        key={language}
+        style={{ flex: 1, backgroundColor: Colors.background }}
+        onLayout={onLayoutRootView}
+      >
+        <ErrorBoundary>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: Colors.background },
+              animation: 'slide_from_right',
             }}
-          />
-          <Stack.Screen
-            name="result"
-            options={{
-              presentation: 'fullScreenModal',
-              animation: 'fade_from_bottom',
-              animationDuration: 220,
-              animationTypeForReplace: 'push',
-              gestureEnabled: false,
-            }}
-          />
-        </Stack>
-      </ErrorBoundary>
-      <ResumeWorkoutBanner />
-      <StatusBar style="light" />
-    </View>
+          >
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen
+              name="timer"
+              options={{
+                presentation: 'card',
+                animation: 'fade',
+                animationDuration: 180,
+                animationTypeForReplace: 'push',
+                gestureEnabled: false,
+              }}
+            />
+            <Stack.Screen
+              name="result"
+              options={{
+                presentation: 'fullScreenModal',
+                animation: 'fade_from_bottom',
+                animationDuration: 220,
+                animationTypeForReplace: 'push',
+                gestureEnabled: false,
+              }}
+            />
+          </Stack>
+        </ErrorBoundary>
+        <ResumeWorkoutBanner />
+        <StatusBar style="light" />
+      </View>
+    </SafeAreaProvider>
   );
 }

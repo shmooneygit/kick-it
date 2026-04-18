@@ -450,7 +450,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <View style={[styles.startDock, { paddingBottom: insets.bottom + 12 }]}>
+      <View style={[styles.startDock, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <Pressable style={styles.startBtn} onPress={handleStart}>
           <Text style={styles.startBtnText}>{t('settings.start').toUpperCase()}</Text>
         </Pressable>
