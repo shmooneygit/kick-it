@@ -101,5 +101,6 @@ export interface TimerState {
 export interface AppSettings {
   language: 'uk' | 'en';
   hapticLevel: 'off' | 'light' | 'strong';
+  vibrationEnabled: boolean;
   defaultCountdown: number;
 }

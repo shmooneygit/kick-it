@@ -127,6 +127,8 @@ export function TimerDisplay({
   const colorProgress = useSharedValue(displayStateIndex);
   const pulseScale = useSharedValue(1);
   const previousPhaseRef = useRef(phase);
+  const previousRingPhaseRef = useRef(phase);
+  const wasPausedRef = useRef(isPaused);
 
   useEffect(() => {
     colorProgress.value = withTiming(displayStateIndex, {
@@ -141,9 +143,21 @@ export function TimerDisplay({
     const targetRemainingMs = nextWholeSecond * 1000;
     const durationToNextSecond = Math.max(0, phaseRemainingMs - targetRemainingMs);
     const targetRatio = phaseDurationMs > 0 ? Math.max(0, targetRemainingMs / phaseDurationMs) : 0;
+    const didPhaseChange = previousRingPhaseRef.current !== phase;
+    const wasPaused = wasPausedRef.current;
 
     cancelAnimation(progress);
-    progress.value = currentRatio;
+
+    if (isPaused) {
+      previousRingPhaseRef.current = phase;
+      wasPausedRef.current = true;
+      return;
+    }
+
+    // After pausing, keep the exact interpolated ring position as the starting point on resume.
+    if (didPhaseChange || !wasPaused) {
+      progress.value = currentRatio;
+    }
 
     if (phase !== 'finished' && durationToNextSecond > 0) {
       progress.value = withTiming(targetRatio, {
@@ -151,7 +165,10 @@ export function TimerDisplay({
         easing: Easing.linear,
       });
     }
-  }, [phase, phaseDurationMs, phaseRemainingMs, progress, secondsRemaining]);
+
+    previousRingPhaseRef.current = phase;
+    wasPausedRef.current = false;
+  }, [isPaused, phase, phaseDurationMs, phaseRemainingMs, progress, secondsRemaining]);
 
   useEffect(() => {
     if (!isWarningPulseActive) {

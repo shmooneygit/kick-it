@@ -15,15 +15,11 @@ type RepeatResolver =
   | ((options: SoundPlaybackOptions) => number);
 
 interface ModeSoundProfile {
-  labelKey: 'sound_bell' | 'sound_beep';
-  previewEvent: SoundEvent;
   assets: Record<SoundEvent, SoundAsset>;
   repeats: Partial<Record<SoundEvent, RepeatResolver>>;
 }
 
 const boxingSoundProfile: ModeSoundProfile = {
-  labelKey: 'sound_bell',
-  previewEvent: 'round',
   assets: {
     round: BELL,
     rest: BELL,
@@ -37,8 +33,6 @@ const boxingSoundProfile: ModeSoundProfile = {
 };
 
 const tabataSoundProfile: ModeSoundProfile = {
-  labelKey: 'sound_beep',
-  previewEvent: 'round',
   assets: {
     round: BEEP,
     rest: BEEP,
@@ -85,14 +79,4 @@ export function getSoundPlayback(
     asset: profile.assets[event],
     repeat: resolveRepeat(profile.repeats[event], options),
   };
-}
-
-export function getModeSoundLabelKey(mode: TimerMode): 'sound_bell' | 'sound_beep' {
-  return modeSoundProfiles[mode].labelKey;
-}
-
-export function getModePreviewAsset(mode: TimerMode): SoundAsset {
-  const profile = modeSoundProfiles[mode];
-
-  return profile.assets[profile.previewEvent];
 }

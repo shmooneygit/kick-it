@@ -4,28 +4,24 @@ import {
   ScrollView,
   Pressable,
   Linking,
+  Switch,
   StyleSheet,
 } from 'react-native';
 import Constants from 'expo-constants';
 import { useCallback, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSound } from '@/hooks/use-sound';
-import { getModeSoundLabelKey } from '@/lib/sounds';
-import { AppSettings, TimerMode } from '@/lib/types';
 import { useSettingsStore } from '@/store/settings-store';
 import { usePresets } from '@/hooks/use-presets';
 import { ConfirmSheet } from '@/components/confirm-sheet';
-import { NumberStepper } from '@/components/number-stepper';
 import { Colors, FontFamily, Spacing } from '@/constants/theme';
 import { t } from '@/lib/i18n';
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const settings = useSettingsStore((s) => s.settings);
+  const vibrationEnabled = useSettingsStore((s) => s.vibrationEnabled);
   const language = useSettingsStore((s) => s.language);
   const update = useSettingsStore((s) => s.update);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
-  const { previewMode } = useSound();
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
   const { userPresets: boxingPresets, deletePreset: deleteBoxing } = usePresets('boxing');
   const { userPresets: tabataPresets, deletePreset: deleteTabata } = usePresets('tabata');
@@ -42,9 +38,9 @@ export default function SettingsScreen() {
     [setLanguage],
   );
 
-  const handleHapticLevelChange = useCallback(
-    (level: AppSettings['hapticLevel']) => {
-      void update({ hapticLevel: level });
+  const handleVibrationToggle = useCallback(
+    (enabled: boolean) => {
+      void update({ vibrationEnabled: enabled });
     },
     [update],
   );
@@ -70,15 +66,6 @@ export default function SettingsScreen() {
 
     setPresetToDelete(null);
   }, [allUserPresets, deleteBoxing, deleteTabata, presetToDelete]);
-
-  const handleSoundPreview = useCallback(
-    (mode: TimerMode) => {
-      previewMode(mode).catch((error) => {
-        console.warn('[settings] sound preview failed:', error);
-      });
-    },
-    [previewMode],
-  );
 
   return (
     <View
@@ -109,69 +96,14 @@ export default function SettingsScreen() {
       >
         <Text style={styles.sectionLabel}>{t('settingsScreen.soundVibration').toUpperCase()}</Text>
         <View style={styles.group}>
-          <View style={[styles.row, styles.rowDivider]}>
-            <Text style={styles.label}>{t('home.boxing')}</Text>
-            <View style={styles.valueRow}>
-              <Text style={styles.valueAccent}>{t(getModeSoundLabelKey('boxing'))}</Text>
-              <Pressable
-                style={styles.previewButton}
-                onPress={() => handleSoundPreview('boxing')}
-              >
-                <Text style={styles.previewButtonText}>{t('settingsScreen.testSound')}</Text>
-              </Pressable>
-            </View>
-          </View>
-          <View style={[styles.row, styles.rowDivider]}>
-            <Text style={styles.label}>{t('home.tabata')}</Text>
-            <View style={styles.valueRow}>
-              <Text style={styles.valueAccent}>{t(getModeSoundLabelKey('tabata'))}</Text>
-              <Pressable
-                style={styles.previewButton}
-                onPress={() => handleSoundPreview('tabata')}
-              >
-                <Text style={styles.previewButtonText}>{t('settingsScreen.testSound')}</Text>
-              </Pressable>
-            </View>
-          </View>
           <View style={styles.row}>
-            <Text style={styles.label}>{t('settingsScreen.hapticFeedback')}</Text>
-            <View style={styles.hapticSegmented}>
-              {(['off', 'light', 'strong'] as const).map((level) => (
-                <Pressable
-                  key={level}
-                  style={[
-                    styles.hapticSegment,
-                    settings.hapticLevel === level && styles.hapticSegmentActive,
-                  ]}
-                  onPress={() => handleHapticLevelChange(level)}
-                >
-                  <Text
-                    style={[
-                      styles.hapticSegmentText,
-                      settings.hapticLevel === level && styles.hapticSegmentTextActive,
-                    ]}
-                  >
-                    {t(`settingsScreen.${level}`)}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        <Text style={styles.sectionLabel}>{t('settingsScreen.timerSection').toUpperCase()}</Text>
-        <View style={styles.group}>
-          <View style={styles.row}>
-            <Text style={styles.label}>{t('settingsScreen.defaultCountdown')}</Text>
-            <NumberStepper
-              label=""
-              value={settings.defaultCountdown}
-              min={5}
-              max={30}
-              step={5}
-              onChange={(value) => update({ defaultCountdown: value })}
-              formatValue={(value) => `${value}${t('settings.countdownUnit')}`}
-              compact
+            <Text style={styles.label}>{t('settingsScreen.vibration')}</Text>
+            <Switch
+              value={vibrationEnabled}
+              onValueChange={handleVibrationToggle}
+              trackColor={{ false: Colors.toggleOff, true: Colors.green }}
+              thumbColor={vibrationEnabled ? Colors.background : Colors.toggleThumbOff}
+              ios_backgroundColor={Colors.toggleOff}
             />
           </View>
         </View>
@@ -300,52 +232,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.green,
   },
-  valueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   valueMuted: {
     fontFamily: FontFamily.body,
     fontSize: 13,
     color: Colors.textMuted,
-  },
-  previewButton: {
-    borderWidth: 1,
-    borderColor: Colors.green,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  previewButtonText: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 11,
-    color: Colors.green,
-    letterSpacing: 0.4,
-  },
-  hapticSegmented: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  hapticSegment: {
-    minWidth: 58,
-    minHeight: 36,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.background,
-  },
-  hapticSegmentActive: {
-    backgroundColor: Colors.green,
-  },
-  hapticSegmentText: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 10,
-    color: Colors.textMeta,
-    letterSpacing: 0.8,
-  },
-  hapticSegmentTextActive: {
-    color: Colors.background,
   },
   segmented: {
     flexDirection: 'row',

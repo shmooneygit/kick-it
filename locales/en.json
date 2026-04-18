@@ -93,6 +93,7 @@
   "settingsScreen": {
     "title": "SETTINGS",
     "soundVibration": "Sound & Vibration",
+    "vibration": "Vibration",
     "testSound": "Test",
     "hapticFeedback": "Haptic feedback",
     "off": "Off",

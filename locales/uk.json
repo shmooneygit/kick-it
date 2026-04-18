@@ -93,6 +93,7 @@
   "settingsScreen": {
     "title": "НАЛАШТУВАННЯ",
     "soundVibration": "Звук і вібрація",
+    "vibration": "Вібрація",
     "testSound": "Тест",
     "hapticFeedback": "Відгук",
     "off": "Вимк",

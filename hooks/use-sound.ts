@@ -7,7 +7,6 @@ import {
 import { Asset } from 'expo-asset';
 import { TimerMode } from '@/lib/types';
 import {
-  getModePreviewAsset,
   getSoundPlayback,
   preloadedSoundAssets,
   SoundAsset,
@@ -198,19 +197,5 @@ export function useSound() {
     [queuePattern],
   );
 
-  const previewMode = useCallback(
-    async (mode: TimerMode) => {
-      const asset = getModePreviewAsset(mode);
-
-      try {
-        await playPreloadedAsset(asset);
-      } catch (error) {
-        console.warn('Sound preview failed:', error);
-        throw error;
-      }
-    },
-    [],
-  );
-
-  return { play, previewMode, startKeepAlive, stopKeepAlive };
+  return { play, startKeepAlive, stopKeepAlive };
 }

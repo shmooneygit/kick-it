@@ -148,6 +148,7 @@ export default function TimerScreen() {
   const activePresetNameRef = useRef<string | undefined>(undefined);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const previousPhaseRef = useRef<TimerPhase | null>(null);
+  const stopModalWasPausedRef = useRef(false);
   const isTabata = config.mode === 'tabata';
 
   const persistSessionSnapshot = useCallback(
@@ -475,18 +476,28 @@ export default function TimerScreen() {
   );
 
   const handleStop = () => {
-    pause();
+    stopModalWasPausedRef.current = timerState.isPaused;
+    if (!timerState.isPaused) {
+      pause();
+    }
     setShowStopModal(true);
   };
 
   const handleStopDismiss = useCallback(() => {
     setShowStopModal(false);
+    if (stopModalWasPausedRef.current) {
+      stopModalWasPausedRef.current = false;
+      return;
+    }
+
+    stopModalWasPausedRef.current = false;
     void startKeepAlive();
     resume();
   }, [resume, startKeepAlive]);
 
   const handleStopConfirm = useCallback(async () => {
     setShowStopModal(false);
+    stopModalWasPausedRef.current = false;
     const routeParams = await saveWorkout(false);
     await clearPersistedSession();
     setRecoverableSession(null);

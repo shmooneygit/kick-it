@@ -21,6 +21,7 @@ export function ControlButtons({
   onHome,
 }: ControlButtonsProps) {
   useSettingsStore((s) => s.language);
+  const pauseAccentColor = isPaused ? Colors.amber : Colors.green;
 
   const handlePausePress = () => {
     triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
@@ -54,13 +55,16 @@ export function ControlButtons({
         <View style={styles.stopGlyph} />
       </Pressable>
 
-      <Pressable style={styles.pauseButton} onPress={handlePausePress}>
+      <Pressable
+        style={[styles.pauseButton, { borderColor: pauseAccentColor }]}
+        onPress={handlePausePress}
+      >
         {isPaused ? (
-          <View style={styles.playGlyph} />
+          <View style={[styles.playGlyph, { borderLeftColor: pauseAccentColor }]} />
         ) : (
           <View style={styles.pauseGlyph}>
-            <View style={styles.pauseBar} />
-            <View style={styles.pauseBar} />
+            <View style={[styles.pauseBar, { backgroundColor: pauseAccentColor }]} />
+            <View style={[styles.pauseBar, { backgroundColor: pauseAccentColor }]} />
           </View>
         )}
       </Pressable>
