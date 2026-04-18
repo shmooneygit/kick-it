@@ -103,9 +103,6 @@ export default function SettingsScreen() {
         confirmLabel={t('timer.yes').toUpperCase()}
         cancelLabel={t('timer.no').toUpperCase()}
         confirmTone="danger"
-        layout="centered"
-        cardStyle={styles.clearHistoryCard}
-        overlayColor="rgba(0, 0, 0, 0.8)"
         onConfirm={() => {
           void handleClearHistoryConfirm();
         }}
@@ -268,10 +265,6 @@ const styles = StyleSheet.create({
   },
   dangerLabel: {
     color: Colors.pink,
-  },
-  clearHistoryCard: {
-    borderColor: Colors.border,
-    backgroundColor: Colors.background,
   },
   segmented: {
     flexDirection: 'row',

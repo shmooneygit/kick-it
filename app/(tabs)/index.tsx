@@ -13,13 +13,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, Href, useFocusEffect } from 'expo-router';
 import { useWorkoutStore } from '@/store/workout-store';
-import { useHistoryStore } from '@/store/history-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { NumberStepper } from '@/components/number-stepper';
 import { DurationStepper } from '@/components/duration-stepper';
 import { usePresets } from '@/hooks/use-presets';
-import { Preset, TimerMode, WorkoutConfig, WorkoutRecord } from '@/lib/types';
-import { formatConfigShorthand, formatTime, getPresetLabel } from '@/lib/format';
+import { Preset, TimerMode, WorkoutConfig } from '@/lib/types';
+import { formatTime } from '@/lib/format';
 import { Colors, FontFamily, FontSize } from '@/constants/theme';
 import { triggerHaptic, triggerHapticEvent, triggerNotification } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
@@ -94,7 +93,6 @@ export default function HomeScreen() {
   const loadConfig = useWorkoutStore((s) => s.loadConfig);
   const getLastConfigForMode = useWorkoutStore((s) => s.getLastConfigForMode);
   const rememberLastConfig = useWorkoutStore((s) => s.rememberLastConfig);
-  const history = useHistoryStore((s) => s.history);
 
   const [mode, setMode] = useState<TimerMode>('boxing');
   const [localConfig, setLocalConfig] = useState<WorkoutConfig>(() =>
@@ -129,7 +127,6 @@ export default function HomeScreen() {
     }, [getLastConfigForMode, mode]),
   );
 
-  const recentWorkouts = history.slice(0, 3);
   const isBoxing = mode === 'boxing';
   const roundsMax = isBoxing ? 50 : 30;
   const workMin = isBoxing ? 15 : 10;
@@ -234,15 +231,6 @@ export default function HomeScreen() {
     setShowSaveInput(false);
     triggerNotification();
   }, [localConfig, saveInputName, savePreset]);
-
-  const handleRepeat = useCallback(
-    (record: WorkoutRecord) => {
-      loadConfig(record.config, record.presetId ?? null);
-      rememberLastConfig(record.config);
-      router.push('/timer' as Href);
-    },
-    [loadConfig, rememberLastConfig, router],
-  );
 
   return (
     <View style={styles.screen}>
@@ -427,27 +415,6 @@ export default function HomeScreen() {
           ) : null}
         </View>
 
-        <View style={styles.recentSection}>
-          <Text style={styles.recentLabel}>{t('home.recent').toUpperCase()}</Text>
-          {recentWorkouts.length > 0 ? (
-            recentWorkouts.map((workout) => (
-              <Pressable
-                key={workout.id}
-                style={styles.recentCard}
-                onPress={() => handleRepeat(workout)}
-              >
-                <View style={styles.recentInfo}>
-                  <Text style={styles.recentTitle}>{getPresetLabel(workout)}</Text>
-                  <Text style={styles.recentMeta}>{formatConfigShorthand(workout)}</Text>
-                </View>
-                <Text style={styles.recentDuration}>{formatTime(workout.totalDuration)}</Text>
-                <Text style={styles.repeatBtn}>▶</Text>
-              </Pressable>
-            ))
-          ) : (
-            <Text style={styles.emptyRecent}>{t('home.recentEmpty')}</Text>
-          )}
-        </View>
       </ScrollView>
 
       <View style={[styles.startDock, { paddingBottom: Math.max(insets.bottom, 16) }]}>
@@ -668,57 +635,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bodySemiBold,
     fontSize: 14,
     color: Colors.green,
-  },
-  recentSection: {
-    marginBottom: 8,
-  },
-  recentLabel: {
-    fontFamily: FontFamily.body,
-    fontSize: 10,
-    color: Colors.textMeta,
-    marginBottom: 8,
-    letterSpacing: 1,
-  },
-  recentCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.hairline,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    marginBottom: 6,
-    gap: 8,
-  },
-  recentInfo: {
-    flex: 1,
-  },
-  recentTitle: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 13,
-    color: Colors.textPrimary,
-  },
-  recentMeta: {
-    fontFamily: FontFamily.body,
-    fontSize: 11,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  recentDuration: {
-    fontFamily: FontFamily.body,
-    fontSize: 10,
-    color: Colors.textMuted,
-  },
-  repeatBtn: {
-    fontFamily: FontFamily.bodySemiBold,
-    fontSize: 10,
-    color: Colors.green,
-  },
-  emptyRecent: {
-    fontFamily: FontFamily.body,
-    fontSize: 13,
-    color: Colors.textMuted,
-    paddingVertical: 10,
-    textAlign: 'center',
   },
   startDock: {
     backgroundColor: Colors.background,

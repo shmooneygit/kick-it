@@ -304,17 +304,19 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    paddingHorizontal: 24,
   },
   modalContent: {
     width: '100%',
+    maxWidth: 360,
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.background,
-    padding: 20,
+    borderRadius: 0,
+    padding: 24,
     alignItems: 'center',
   },
   modalIcon: {
@@ -323,7 +325,7 @@ const styles = StyleSheet.create({
   },
   modalName: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 16,
+    fontSize: 18,
     color: Colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
@@ -331,9 +333,9 @@ const styles = StyleSheet.create({
   modalDesc: {
     fontFamily: FontFamily.body,
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: Colors.textMeta,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 24,
   },
   modalEarned: {
     fontFamily: FontFamily.bodySemiBold,

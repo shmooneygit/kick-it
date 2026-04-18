@@ -43,7 +43,7 @@ const DISPLAY_GLOW_COLORS = [
   withOpacity(Colors.work, 0.24),
   withOpacity(Colors.rest, 0.2),
   withOpacity(Colors.amber, 0.22),
-  withOpacity(Colors.finished, 0.18),
+  withOpacity(Colors.finished, 0),
 ];
 
 interface TimerDisplayProps {
@@ -84,7 +84,10 @@ function getDisplayState(
   secondsRemaining: number,
   isLastTabataInterval: boolean,
 ): DisplayState {
-  if (isLastTabataInterval || (phase === 'work' && secondsRemaining > 0 && secondsRemaining <= 10)) {
+  if (
+    isLastTabataInterval ||
+    (phase === 'work' && secondsRemaining > 0 && secondsRemaining <= 10)
+  ) {
     return 'warning';
   }
 
@@ -116,13 +119,18 @@ export function TimerDisplay({
     (phase === 'work' || phase === 'rest');
   const displayState = getDisplayState(phase, secondsRemaining, isLastTabataInterval);
   const displayStateIndex = getDisplayStateIndex(displayState);
-  const isWarningPulseActive = displayState === 'warning' && phase !== 'finished';
+  const isFinished = phase === 'finished';
+  const isWarningPulseActive = displayState === 'warning' && !isFinished;
   const size = Math.min(width * 0.68, 280);
   const strokeWidth = 8;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = useSharedValue(
-    phaseDurationMs > 0 ? Math.max(0, phaseRemainingMs / phaseDurationMs) : 0,
+    isFinished
+      ? 1
+      : phaseDurationMs > 0
+        ? Math.max(0, phaseRemainingMs / phaseDurationMs)
+        : 0,
   );
   const colorProgress = useSharedValue(displayStateIndex);
   const pulseScale = useSharedValue(1);
@@ -138,11 +146,19 @@ export function TimerDisplay({
   }, [colorProgress, displayStateIndex]);
 
   useEffect(() => {
-    const currentRatio = phaseDurationMs > 0 ? Math.max(0, phaseRemainingMs / phaseDurationMs) : 0;
+    const currentRatio = isFinished
+      ? 1
+      : phaseDurationMs > 0
+        ? Math.max(0, phaseRemainingMs / phaseDurationMs)
+        : 0;
     const nextWholeSecond = Math.max(secondsRemaining - 1, 0);
     const targetRemainingMs = nextWholeSecond * 1000;
     const durationToNextSecond = Math.max(0, phaseRemainingMs - targetRemainingMs);
-    const targetRatio = phaseDurationMs > 0 ? Math.max(0, targetRemainingMs / phaseDurationMs) : 0;
+    const targetRatio = isFinished
+      ? 1
+      : phaseDurationMs > 0
+        ? Math.max(0, targetRemainingMs / phaseDurationMs)
+        : 0;
     const didPhaseChange = previousRingPhaseRef.current !== phase;
     const wasPaused = wasPausedRef.current;
 
@@ -159,7 +175,7 @@ export function TimerDisplay({
       progress.value = currentRatio;
     }
 
-    if (phase !== 'finished' && durationToNextSecond > 0) {
+    if (!isFinished && durationToNextSecond > 0) {
       progress.value = withTiming(targetRatio, {
         duration: durationToNextSecond,
         easing: Easing.linear,
@@ -168,7 +184,7 @@ export function TimerDisplay({
 
     previousRingPhaseRef.current = phase;
     wasPausedRef.current = false;
-  }, [isPaused, phase, phaseDurationMs, phaseRemainingMs, progress, secondsRemaining]);
+  }, [isFinished, isPaused, phase, phaseDurationMs, phaseRemainingMs, progress, secondsRemaining]);
 
   useEffect(() => {
     if (!isWarningPulseActive) {
@@ -209,7 +225,7 @@ export function TimerDisplay({
 
   const ringGlowStyle = useAnimatedStyle(() => ({
     shadowColor: interpolateColor(colorProgress.value, [0, 1, 2, 3, 4], DISPLAY_COLORS),
-    shadowOpacity: 0.55,
+    shadowOpacity: isFinished ? 0 : 0.55,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 0 },
     backgroundColor: interpolateColor(
@@ -228,6 +244,8 @@ export function TimerDisplay({
     }),
     [size],
   );
+  const digitsFontSize = size >= 260 ? 110 : size >= 230 ? 102 : 96;
+  const digitsLineHeight = digitsFontSize + 4;
 
   const renderCounter = () => {
     if (phase === 'rest' && currentRound < totalRounds) {
@@ -240,7 +258,7 @@ export function TimerDisplay({
       );
     }
 
-    if (phase === 'finished') {
+    if (isFinished) {
       return null;
     }
 
@@ -254,7 +272,13 @@ export function TimerDisplay({
 
   return (
     <View style={styles.container}>
-      <AnimatedText style={[styles.phaseLabel, phaseLabelAnimatedStyle]}>
+      <AnimatedText
+        style={[
+          styles.phaseLabel,
+          phaseLabelAnimatedStyle,
+          isFinished && styles.phaseLabelFinished,
+        ]}
+      >
         {getPhaseLabel(phase, mode, isLastTabataInterval)}
       </AnimatedText>
 
@@ -290,13 +314,22 @@ export function TimerDisplay({
           />
         </Svg>
 
-      <View style={styles.ringCenter}>
-        <AnimatedText style={[styles.digits, digitsAnimatedStyle]}>
-          {formatTime(secondsRemaining)}
-        </AnimatedText>
+        <View style={styles.ringCenter}>
+          <AnimatedText
+            style={[
+              styles.digits,
+              digitsAnimatedStyle,
+              {
+                fontSize: digitsFontSize,
+                lineHeight: digitsLineHeight,
+              },
+            ]}
+          >
+            {formatTime(secondsRemaining)}
+          </AnimatedText>
+        </View>
       </View>
     </View>
-  </View>
   );
 }
 
@@ -313,6 +346,9 @@ const styles = StyleSheet.create({
     letterSpacing: 4,
     textTransform: 'uppercase',
     marginBottom: 10,
+  },
+  phaseLabelFinished: {
+    marginBottom: 24,
   },
   roundCounter: {
     marginBottom: 24,
@@ -352,10 +388,13 @@ const styles = StyleSheet.create({
   },
   digits: {
     fontFamily: FontFamily.timerDisplay,
-    fontSize: 78,
+    fontSize: 96,
+    fontWeight: '700',
     letterSpacing: 4,
     color: Colors.green,
-    lineHeight: 80,
+    lineHeight: 100,
     textAlign: 'center',
+    includeFontPadding: false,
+    marginTop: -6,
   },
 });

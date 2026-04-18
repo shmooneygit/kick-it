@@ -1,4 +1,4 @@
-import { Modal, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useEffect } from 'react';
 import Animated, {
   Easing,
@@ -16,9 +16,6 @@ interface ConfirmSheetProps {
   confirmLabel: string;
   cancelLabel: string;
   confirmTone?: 'danger' | 'default';
-  layout?: 'sheet' | 'centered';
-  overlayColor?: string;
-  cardStyle?: StyleProp<ViewStyle>;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -30,19 +27,16 @@ export function ConfirmSheet({
   confirmLabel,
   cancelLabel,
   confirmTone = 'default',
-  layout = 'sheet',
-  overlayColor = 'rgba(8, 8, 16, 0.8)',
-  cardStyle,
   onConfirm,
   onCancel,
 }: ConfirmSheetProps) {
   const overlayOpacity = useSharedValue(0);
-  const translateY = useSharedValue(48);
+  const translateY = useSharedValue(16);
 
   useEffect(() => {
     if (!visible) {
       overlayOpacity.value = 0;
-      translateY.value = 48;
+      translateY.value = 16;
       return;
     }
 
@@ -67,23 +61,13 @@ export function ConfirmSheet({
 
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={onCancel}>
-      <View style={[styles.root, layout === 'centered' ? styles.rootCentered : styles.rootSheet]}>
+      <View style={styles.root}>
         <Animated.View style={[styles.overlay, overlayStyle]}>
-          <Pressable
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: overlayColor }]}
-            onPress={onCancel}
-          />
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={onCancel} />
         </Animated.View>
 
-        <Animated.View
-          style={[
-            styles.card,
-            layout === 'centered' ? styles.cardCentered : styles.cardSheet,
-            animatedCardStyle,
-            cardStyle,
-          ]}
-        >
-          <Text style={styles.title}>{title}</Text>
+        <Animated.View style={[styles.card, animatedCardStyle]}>
+          <Text style={[styles.title, !subtitle && styles.titleWithoutSubtitle]}>{title}</Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
           <Pressable
@@ -108,79 +92,72 @@ export function ConfirmSheet({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  rootSheet: {
-    justifyContent: 'flex-end',
-  },
-  rootCentered: {
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.85)',
   },
   card: {
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#2A2A3F',
-    backgroundColor: '#12121F',
-    paddingHorizontal: 18,
-    paddingTop: 22,
-    paddingBottom: 18,
-  },
-  cardSheet: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-  },
-  cardCentered: {
     width: '100%',
     maxWidth: 360,
-    alignSelf: 'center',
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 0,
+    padding: 24,
   },
   title: {
-    fontFamily: FontFamily.heading,
-    fontSize: 22,
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 18,
     color: Colors.textPrimary,
-    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  titleWithoutSubtitle: {
+    marginBottom: 24,
   },
   subtitle: {
-    marginTop: 8,
-    marginBottom: 18,
     fontFamily: FontFamily.body,
-    fontSize: 14,
-    color: '#7B7B9A',
+    fontSize: 13,
+    color: Colors.textMeta,
+    marginBottom: 24,
   },
   primaryButton: {
-    minHeight: 54,
-    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    padding: 16,
+    borderRadius: 0,
   },
   primaryButtonDanger: {
-    backgroundColor: '#FF2D2D',
+    backgroundColor: Colors.pink,
   },
   primaryButtonDefault: {
     backgroundColor: Colors.green,
   },
   primaryButtonText: {
-    fontFamily: FontFamily.heading,
-    fontSize: 18,
+    fontFamily: FontFamily.bodyBold,
+    fontSize: 14,
     color: Colors.textPrimary,
-    letterSpacing: 1.2,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
   secondaryButton: {
-    minHeight: 54,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#2A2A3F',
+    marginTop: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 16,
+    borderRadius: 0,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   secondaryButtonText: {
     fontFamily: FontFamily.bodySemiBold,
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.textPrimary,
-    letterSpacing: 0.6,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
 });
