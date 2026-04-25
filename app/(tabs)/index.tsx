@@ -8,6 +8,7 @@ import {
   Platform,
   TextInput,
   UIManager,
+  type LayoutChangeEvent,
 } from 'react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +23,22 @@ import { formatTime } from '@/lib/format';
 import { Colors, FontFamily, FontSize } from '@/constants/theme';
 import { triggerHaptic, triggerHapticEvent, triggerNotification } from '@/lib/haptics';
 import { t } from '@/lib/i18n';
+
+type PreviewPhase = 'countdown' | 'work' | 'rest';
+
+interface PreviewBlock {
+  id: string;
+  phase: PreviewPhase;
+  duration: number;
+}
+
+const PREVIEW_BLOCK_MIN_WIDTH = 6;
+const PREVIEW_BLOCK_GAP = 2;
+const PREVIEW_PHASE_COLORS: Record<PreviewPhase, string> = {
+  countdown: '#FFB800',
+  work: '#39FF14',
+  rest: '#FF006E',
+};
 
 function getGreetingLabel(language: 'uk' | 'en'): string {
   const h = new Date().getHours();
@@ -51,6 +68,36 @@ function computeTotal(config: WorkoutConfig): number {
     config.rounds * config.workDuration +
     Math.max(0, config.rounds - 1) * config.restDuration
   );
+}
+
+function buildPreviewBlocks(config: WorkoutConfig): PreviewBlock[] {
+  const blocks: PreviewBlock[] = [
+    { id: 'countdown', phase: 'countdown', duration: config.countdownDuration },
+  ];
+
+  for (let round = 1; round <= config.rounds; round += 1) {
+    blocks.push({ id: `work-${round}`, phase: 'work', duration: config.workDuration });
+
+    if (round < config.rounds) {
+      blocks.push({ id: `rest-${round}`, phase: 'rest', duration: config.restDuration });
+    }
+  }
+
+  return blocks;
+}
+
+function getPreviewBlockWidth(
+  duration: number,
+  totalSeconds: number,
+  stripWidth: number,
+  blockCount: number,
+): number {
+  if (totalSeconds <= 0 || stripWidth <= 0) {
+    return PREVIEW_BLOCK_MIN_WIDTH;
+  }
+
+  const availableWidth = Math.max(0, stripWidth - blockCount * PREVIEW_BLOCK_GAP);
+  return Math.max(PREVIEW_BLOCK_MIN_WIDTH, (duration / totalSeconds) * availableWidth);
 }
 
 function configureAccordionAnimation() {
@@ -104,6 +151,7 @@ export default function HomeScreen() {
   const [targetMinutes, setTargetMinutes] = useState<number | null>(null);
   const [showSaveInput, setShowSaveInput] = useState(false);
   const [saveInputName, setSaveInputName] = useState('');
+  const [previewStripWidth, setPreviewStripWidth] = useState(0);
   const { presets, savePreset, getPresetName } = usePresets(mode);
 
   useEffect(() => {
@@ -135,6 +183,15 @@ export default function HomeScreen() {
   const restMax = isBoxing ? 300 : 60;
 
   const totalSeconds = useMemo(() => computeTotal(localConfig), [localConfig]);
+  const previewBlocks = useMemo(() => buildPreviewBlocks(localConfig), [localConfig]);
+  const workTotalSeconds = localConfig.rounds * localConfig.workDuration;
+  const restTotalSeconds = Math.max(0, localConfig.rounds - 1) * localConfig.restDuration;
+
+  const handlePreviewLayout = useCallback((event: LayoutChangeEvent) => {
+    const nextWidth = event.nativeEvent.layout.width;
+
+    setPreviewStripWidth((prev) => (prev === nextWidth ? prev : nextWidth));
+  }, []);
 
   const handleModeSwitch = useCallback(
     (nextMode: TimerMode) => {
@@ -322,10 +379,42 @@ export default function HomeScreen() {
             />
           </ConfigRow>
 
-          <Text style={styles.totalLine}>
-            <Text style={styles.totalLineLabel}>{t('settings.totalWorkout')}: </Text>
-            <Text style={styles.totalLineValue}>{formatTime(totalSeconds)}</Text>
-          </Text>
+          <View style={styles.sessionPreview}>
+            <View style={styles.sessionPreviewStrip} onLayout={handlePreviewLayout}>
+              {previewBlocks.map((block) => (
+                <View
+                  key={block.id}
+                  style={[
+                    styles.sessionPreviewBlock,
+                    {
+                      width: getPreviewBlockWidth(
+                        block.duration,
+                        totalSeconds,
+                        previewStripWidth,
+                        previewBlocks.length,
+                      ),
+                      backgroundColor: PREVIEW_PHASE_COLORS[block.phase],
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+            <Text
+              style={styles.timeBreakdown}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              <Text style={styles.timeBreakdownValue}>{formatTime(workTotalSeconds)} </Text>
+              <Text style={styles.timeBreakdownWorkLabel}>{t('config.work')}</Text>
+              <Text style={styles.timeBreakdownSeparator}> · </Text>
+              <Text style={styles.timeBreakdownValue}>{formatTime(restTotalSeconds)} </Text>
+              <Text style={styles.timeBreakdownRestLabel}>{t('config.rest')}</Text>
+              <Text style={styles.timeBreakdownSeparator}> · </Text>
+              <Text style={styles.timeBreakdownValue}>{formatTime(totalSeconds)} </Text>
+              <Text style={styles.timeBreakdownTotalLabel}>{t('config.total')}</Text>
+            </Text>
+          </View>
 
           {expanded ? (
             <View style={styles.expandedSection}>
@@ -525,17 +614,40 @@ const styles = StyleSheet.create({
   configRowControl: {
     alignItems: 'flex-end',
   },
-  totalLine: {
-    marginTop: 10,
+  sessionPreview: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  sessionPreviewStrip: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    overflow: 'hidden',
+  },
+  sessionPreviewBlock: {
+    height: 12,
+    marginRight: 2,
+  },
+  timeBreakdown: {
+    marginTop: 6,
     textAlign: 'center',
     fontFamily: FontFamily.body,
-    fontSize: 11,
+    fontSize: 10,
   },
-  totalLineLabel: {
-    color: Colors.textMeta,
+  timeBreakdownValue: {
+    color: '#888',
   },
-  totalLineValue: {
-    color: Colors.textSecondary,
+  timeBreakdownWorkLabel: {
+    color: '#39FF14',
+  },
+  timeBreakdownRestLabel: {
+    color: '#FF006E',
+  },
+  timeBreakdownTotalLabel: {
+    color: '#888',
+  },
+  timeBreakdownSeparator: {
+    color: '#333',
   },
   expandedSection: {
     borderTopWidth: 1,

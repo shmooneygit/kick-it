@@ -9,6 +9,11 @@
     "recent": "Recent",
     "recentEmpty": "Your workouts will appear here"
   },
+  "config": {
+    "work": "work",
+    "rest": "rest",
+    "total": "total"
+  },
   "tabs": {
     "timer": "Timer",
     "stats": "Statistics",
@@ -57,10 +62,15 @@
   "result": {
     "title": "WORKOUT COMPLETE",
     "stoppedTitle": "WORKOUT STOPPED",
+    "motivational_0": "YOU CRUSHED IT!",
+    "motivational_1": "BEAST MODE!",
+    "motivational_2": "GREAT WORK!",
+    "motivational_3": "UNSTOPPABLE!",
+    "motivational_4": "KNOCKOUT!",
     "roundsCompleted": "rounds",
     "intervalsCompleted": "intervals",
     "totalTime": "Total time",
-    "repeat": "Repeat",
+    "repeat": "DO IT AGAIN!",
     "done": "Done",
     "unavailableTitle": "No workout result",
     "unavailableMessage": "Start or finish a workout to see results here."

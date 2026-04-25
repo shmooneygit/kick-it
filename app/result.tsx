@@ -26,12 +26,14 @@ import { t } from '@/lib/i18n';
 import { format, parseISO } from 'date-fns';
 import { BadgeDef } from '@/lib/types';
 
+const MOTIVATIONAL_PHRASE_COUNT = 5;
+
 function badgeText(language: 'uk' | 'en', badge: BadgeDef): string {
   return language === 'uk' ? badge.name.uk : badge.name.en;
 }
 
-function getResultHeading(wasCompleted: boolean): string {
-  return wasCompleted ? t('result.title') : t('result.stoppedTitle');
+function getResultHeading(wasCompleted: boolean, motivationalIndex: number): string {
+  return wasCompleted ? t(`result.motivational_${motivationalIndex}`) : t('result.stoppedTitle');
 }
 
 function easeOutCubic(progress: number): number {
@@ -131,6 +133,9 @@ export default function ResultScreen() {
   const clearLastResult = useWorkoutStore((s) => s.clearLastResult);
   const history = useHistoryStore((s) => s.history);
   const getBadgesByIds = useAchievementStore((s) => s.getBadgesByIds);
+  const [motivationalIndex] = useState(() =>
+    Math.floor(Math.random() * MOTIVATIONAL_PHRASE_COUNT),
+  );
 
   const recordId = Array.isArray(params.recordId) ? params.recordId[0] : params.recordId;
   const newBadgeIdsParam = Array.isArray(params.newBadgeIds) ? params.newBadgeIds[0] : params.newBadgeIds;
@@ -191,17 +196,14 @@ export default function ResultScreen() {
     router.replace('/timer' as Href);
   };
 
-  const statusScale = useSharedValue(0.72);
+  const statusScale = useSharedValue(0.5);
 
   useEffect(() => {
-    statusScale.value = withDelay(
-      80,
-      withSpring(1, {
-        damping: 10,
-        stiffness: 180,
-        mass: 0.75,
-      }),
-    );
+    statusScale.value = withSpring(1, {
+      damping: 10,
+      stiffness: 120,
+      mass: 0.8,
+    });
   }, [statusScale]);
 
   const statusAnimatedStyle = useAnimatedStyle(() => ({
@@ -253,7 +255,9 @@ export default function ResultScreen() {
           <Text style={[styles.statusMark, { color: accent }]}>✓</Text>
         </Animated.View>
 
-        <Text style={styles.heading}>{getResultHeading(sessionResult.wasCompleted)}</Text>
+        <Text style={[styles.heading, sessionResult.wasCompleted && styles.headingCelebration]}>
+          {getResultHeading(sessionResult.wasCompleted, motivationalIndex)}
+        </Text>
         <Text style={styles.dateText}>{dateLabel}</Text>
 
         <View style={styles.statsCard}>
@@ -343,6 +347,11 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     textAlign: 'center',
     marginBottom: 6,
+  },
+  headingCelebration: {
+    fontFamily: FontFamily.bodyBold,
+    fontSize: 24,
+    color: '#39FF14',
   },
   dateText: {
     fontFamily: FontFamily.body,

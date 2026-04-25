@@ -9,6 +9,11 @@
     "recent": "Останні",
     "recentEmpty": "Твої тренування з'являться тут"
   },
+  "config": {
+    "work": "робота",
+    "rest": "відпочинок",
+    "total": "загалом"
+  },
   "tabs": {
     "timer": "Таймер",
     "stats": "Статистика",
@@ -57,10 +62,15 @@
   "result": {
     "title": "ТРЕНУВАННЯ ЗАВЕРШЕНО",
     "stoppedTitle": "ТРЕНУВАННЯ ЗУПИНЕНО",
+    "motivational_0": "ЧУДОВА РОБОТА!",
+    "motivational_1": "МОЛОДЕЦЬ!",
+    "motivational_2": "ТИ ЗВІР!",
+    "motivational_3": "ПОТУЖНО!",
+    "motivational_4": "НОКАУТ!",
     "roundsCompleted": "раундів",
     "intervalsCompleted": "інтервалів",
     "totalTime": "Загальний час",
-    "repeat": "Повторити",
+    "repeat": "ЩЕ РАЗ!",
     "done": "Готово",
     "unavailableTitle": "Немає результату тренування",
     "unavailableMessage": "Запусти або заверши тренування, щоб побачити результат."
