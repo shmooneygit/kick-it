@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import {
   Audio,
   InterruptionModeAndroid,
@@ -16,6 +17,28 @@ import {
 
 const KEEP_ALIVE_ASSET = require('../assets/keepalive/silence.wav') as SoundAsset;
 const PRELOADED_POOL_SIZE = 4;
+const KEEP_ALIVE_HEALTH_CHECK_INTERVAL_MS = 15_000;
+
+const AUDIO_MODE = {
+  playsInSilentModeIOS: true,
+  staysActiveInBackground: true,
+  shouldDuckAndroid: false,
+  interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+  interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+  playThroughEarpieceAndroid: false,
+};
+
+const POOLED_SOUND_STATUS = {
+  shouldPlay: false,
+  progressUpdateIntervalMillis: 60000,
+};
+
+const KEEP_ALIVE_STATUS = {
+  shouldPlay: true,
+  isLooping: true,
+  volume: 0.01,
+  progressUpdateIntervalMillis: 60000,
+};
 
 interface SoundPool {
   cursor: number;
@@ -26,22 +49,83 @@ let audioModePromise: Promise<void> | null = null;
 let soundBankPromise: Promise<void> | null = null;
 const soundPools = new Map<SoundAsset, SoundPool>();
 
-export function configureAudioModeOnce(): Promise<void> {
+function configureAudioMode(): Promise<void> {
   if (!audioModePromise) {
-    audioModePromise = Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      shouldDuckAndroid: false,
-      interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
-      interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-      playThroughEarpieceAndroid: false,
-    }).catch((error) => {
+    audioModePromise = Audio.setAudioModeAsync(AUDIO_MODE).finally(() => {
       audioModePromise = null;
-      throw error;
     });
   }
 
   return audioModePromise;
+}
+
+export function configureAudioModeOnce(): Promise<void> {
+  return configureAudioMode();
+}
+
+async function createPooledSound(asset: SoundAsset): Promise<Audio.Sound> {
+  const { sound } = await Audio.Sound.createAsync(asset, POOLED_SOUND_STATUS);
+
+  return sound;
+}
+
+async function createKeepAliveSound(): Promise<Audio.Sound> {
+  const { sound } = await Audio.Sound.createAsync(KEEP_ALIVE_ASSET, KEEP_ALIVE_STATUS);
+
+  return sound;
+}
+
+async function stopAndUnloadSound(sound: Audio.Sound): Promise<void> {
+  try {
+    await sound.stopAsync();
+  } catch {}
+
+  try {
+    await sound.unloadAsync();
+  } catch {}
+}
+
+async function replacePooledSound(
+  asset: SoundAsset,
+  pool: SoundPool,
+  index: number,
+): Promise<Audio.Sound> {
+  const staleSound = pool.sounds[index];
+  const replacementSound = await createPooledSound(asset);
+
+  pool.sounds[index] = replacementSound;
+
+  if (staleSound) {
+    await stopAndUnloadSound(staleSound);
+  }
+
+  return replacementSound;
+}
+
+async function ensurePooledSoundLoaded(
+  asset: SoundAsset,
+  pool: SoundPool,
+  index: number,
+): Promise<Audio.Sound> {
+  const sound = pool.sounds[index];
+
+  if (!sound) {
+    return replacePooledSound(asset, pool, index);
+  }
+
+  try {
+    const status = await sound.getStatusAsync();
+
+    if (status.isLoaded) {
+      return sound;
+    }
+
+    console.warn('Preloaded sound was unloaded; recreating before playback.');
+  } catch (error) {
+    console.warn('Preloaded sound status check failed; recreating before playback:', error);
+  }
+
+  return replacePooledSound(asset, pool, index);
 }
 
 async function createSoundPool(asset: SoundAsset): Promise<void> {
@@ -50,14 +134,7 @@ async function createSoundPool(asset: SoundAsset): Promise<void> {
   }
 
   const sounds = await Promise.all(
-    Array.from({ length: PRELOADED_POOL_SIZE }, async () => {
-      const { sound } = await Audio.Sound.createAsync(asset, {
-        shouldPlay: false,
-        progressUpdateIntervalMillis: 60000,
-      });
-
-      return sound;
-    }),
+    Array.from({ length: PRELOADED_POOL_SIZE }, () => createPooledSound(asset)),
   );
 
   soundPools.set(asset, {
@@ -83,23 +160,96 @@ export function prepareAudioOnce(): Promise<void> {
 
 async function playPreloadedAsset(asset: SoundAsset) {
   await prepareAudioOnce();
+  await configureAudioMode();
 
   const pool = soundPools.get(asset);
   if (!pool) {
     throw new Error('Sound pool was not initialized');
   }
 
-  const sound = pool.sounds[pool.cursor];
+  const poolIndex = pool.cursor;
   pool.cursor = (pool.cursor + 1) % pool.sounds.length;
+  const sound = await ensurePooledSoundLoaded(asset, pool, poolIndex);
 
-  await sound.replayAsync();
+  try {
+    await sound.replayAsync();
+  } catch (error) {
+    console.warn('Sound playback failed; recreating sound before retry:', error);
+    const replacementSound = await replacePooledSound(asset, pool, poolIndex);
+    await replacementSound.replayAsync();
+  }
 }
 
 export function useSound() {
   const patternTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const keepAliveSoundRef = useRef<Audio.Sound | null>(null);
+  const keepAliveRecoveryPromiseRef = useRef<Promise<void> | null>(null);
   const keepAliveRequestedRef = useRef(false);
   const mountedRef = useRef(true);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  const ensureKeepAlivePlaying = useCallback(() => {
+    if (!mountedRef.current || !keepAliveRequestedRef.current) {
+      return Promise.resolve();
+    }
+
+    if (keepAliveRecoveryPromiseRef.current) {
+      return keepAliveRecoveryPromiseRef.current;
+    }
+
+    const recoveryPromise = (async () => {
+      try {
+        await prepareAudioOnce();
+        await configureAudioMode();
+
+        if (!mountedRef.current || !keepAliveRequestedRef.current) {
+          return;
+        }
+
+        const existingSound = keepAliveSoundRef.current;
+
+        if (existingSound) {
+          try {
+            const status = await existingSound.getStatusAsync();
+
+            if (status.isLoaded) {
+              if (status.isPlaying) {
+                return;
+              }
+
+              await existingSound.setStatusAsync(KEEP_ALIVE_STATUS);
+              return;
+            }
+
+            console.warn('Keep-alive audio was unloaded; recreating loop.');
+          } catch (error) {
+            console.warn('Keep-alive audio health check failed; recreating loop:', error);
+          }
+
+          keepAliveSoundRef.current = null;
+          await stopAndUnloadSound(existingSound);
+        }
+
+        const sound = await createKeepAliveSound();
+
+        if (!mountedRef.current || !keepAliveRequestedRef.current) {
+          await stopAndUnloadSound(sound);
+          return;
+        }
+
+        keepAliveSoundRef.current = sound;
+      } catch (error) {
+        console.warn('Keep-alive audio recovery failed:', error);
+      }
+    })().finally(() => {
+      if (keepAliveRecoveryPromiseRef.current === recoveryPromise) {
+        keepAliveRecoveryPromiseRef.current = null;
+      }
+    });
+
+    keepAliveRecoveryPromiseRef.current = recoveryPromise;
+    return recoveryPromise;
+  }, []);
 
   const stopKeepAlive = useCallback(async () => {
     keepAliveRequestedRef.current = false;
@@ -108,41 +258,14 @@ export function useSound() {
 
     if (!sound) return;
 
-    try {
-      await sound.stopAsync();
-    } catch {}
-
-    try {
-      await sound.unloadAsync();
-    } catch {}
+    await stopAndUnloadSound(sound);
   }, []);
 
   const startKeepAlive = useCallback(async () => {
     keepAliveRequestedRef.current = true;
 
-    if (keepAliveSoundRef.current) return;
-
-    try {
-      await prepareAudioOnce();
-
-      const { sound } = await Audio.Sound.createAsync(KEEP_ALIVE_ASSET, {
-        shouldPlay: true,
-        isLooping: true,
-        volume: 0.01,
-        progressUpdateIntervalMillis: 60000,
-      });
-
-      if (!mountedRef.current || !keepAliveRequestedRef.current) {
-        await sound.unloadAsync().catch(() => {});
-        return;
-      }
-
-      keepAliveSoundRef.current = sound;
-    } catch (error) {
-      keepAliveRequestedRef.current = false;
-      console.warn('Keep-alive audio failed:', error);
-    }
-  }, []);
+    await ensureKeepAlivePlaying();
+  }, [ensureKeepAlivePlaying]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -155,11 +278,41 @@ export function useSound() {
       const keepAliveSound = keepAliveSoundRef.current;
       keepAliveSoundRef.current = null;
       if (keepAliveSound) {
-        keepAliveSound.stopAsync().catch(() => {});
-        keepAliveSound.unloadAsync().catch(() => {});
+        stopAndUnloadSound(keepAliveSound).catch(() => {});
       }
     };
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (keepAliveRequestedRef.current) {
+        void ensureKeepAlivePlaying();
+      }
+    }, KEEP_ALIVE_HEALTH_CHECK_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [ensureKeepAlivePlaying]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextAppState) => {
+      const previousAppState = appStateRef.current;
+      appStateRef.current = nextAppState;
+
+      if (nextAppState !== 'active' || previousAppState === 'active') {
+        return;
+      }
+
+      configureAudioMode().catch((error) => {
+        console.warn('Audio session recovery failed:', error);
+      });
+
+      if (keepAliveRequestedRef.current) {
+        void ensureKeepAlivePlaying();
+      }
+    });
+
+    return () => sub.remove();
+  }, [ensureKeepAlivePlaying]);
 
   const queuePattern = useCallback(async (asset: SoundAsset, repeat: number) => {
     await playPreloadedAsset(asset);
@@ -189,12 +342,16 @@ export function useSound() {
       const { asset, repeat } = getSoundPlayback(options.mode, type, options);
 
       try {
+        if (keepAliveRequestedRef.current) {
+          void ensureKeepAlivePlaying();
+        }
+
         await queuePattern(asset, repeat);
       } catch (error) {
         console.warn('Sound playback failed:', error);
       }
     },
-    [queuePattern],
+    [ensureKeepAlivePlaying, queuePattern],
   );
 
   return { play, startKeepAlive, stopKeepAlive };
